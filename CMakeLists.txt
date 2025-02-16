@@ -19,7 +19,7 @@ if(MSVC)
   target_compile_options(tests PRIVATE /W4 /WX)
 else()
   target_compile_options(tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+  target_compile_definitions(tests PRIVATE MUNIT_NO_FORK)
 endif()
 
 target_include_directories(tests PRIVATE include libs/munit)
-target_compile_definitions(tests PRIVATE MUNIT_NO_FORK)
