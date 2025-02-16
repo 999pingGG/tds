@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.17)
 
 project(tests C)
+enable_testing()
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -14,6 +15,7 @@ add_executable(tests
   libs/munit/munit.c
   libs/munit/munit.h
 )
+add_test(NAME tests COMMAND tests)
 
 if(MSVC)
   target_compile_options(tests PRIVATE /W4 /WX)
