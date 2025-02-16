@@ -27,7 +27,7 @@
   TDS_VALUE_T\
 )
 
-#define TDS_IS_SIGNED(T) ((T)-1 < 0)
+#define TDS_IS_SIGNED(T) ((T)-1 < 1)
 
 #define TDS_MAX_VALUE(T) (TDS_IS_SIGNED(T) ? (T)((1ull << ((sizeof(T) << 3) - 1)) - 1) : (T)-1)
 
