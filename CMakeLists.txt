@@ -14,6 +14,7 @@ add_executable(tests
   include/tds/vector.h
   libs/munit/munit.c
   libs/munit/munit.h
+    include/tds/hashmap.h
 )
 add_test(NAME tests COMMAND tests)
 

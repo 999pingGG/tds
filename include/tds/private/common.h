@@ -1,6 +1,10 @@
 #pragma once
 #ifndef _TDS_PRIVATE_COMMON_H_
 #define _TDS_PRIVATE_COMMON_H_
+#include "rapidhash.h"
+
+#define TDS_JOIN2(a, b) TDS_JOIN2_IMPL(a, b)
+#define TDS_JOIN2_IMPL(a, b) a##b
 
 #define TDS_JOIN3(a, b, c) TDS_JOIN3_IMPL(a, b, c)
 #define TDS_JOIN3_IMPL(a, b, c) a##b##c
@@ -35,6 +39,11 @@
 #define TDS_PREFIX
 #endif
 
+#ifndef TDS_CALLOC
+#include <stdlib.h>
+#define TDS_CALLOC calloc
+#endif
+
 #ifndef TDS_REALLOC
 #include <stdlib.h>
 #define TDS_REALLOC realloc
@@ -43,6 +52,11 @@
 #ifndef TDS_FREE
 #include <stdlib.h>
 #define TDS_FREE free
+#endif
+
+#ifndef TDS_MEMSET
+#include <string.h>
+#define TDS_MEMSET memset
 #endif
 
 #ifndef TDS_ASSERT

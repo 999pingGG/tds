@@ -25,15 +25,17 @@ future-proof.
   
 The following data structures are available:
 
-| Data structure | Description      | Default name | Available functions                              |
-|----------------|------------------|--------------|--------------------------------------------------|
-| Vector         | A dynamic array. | `vec`        | `push`, `get`, `count`, `first`, `clear`, `fini` |
+| Data structure | Description                       | Default name | Available functions                              |
+|----------------|-----------------------------------|--------------|--------------------------------------------------|
+| Vector         | A dynamic array.                  | `vec`        | `push`, `get`, `count`, `first`, `clear`, `fini` |
+| Hashmap        | An unordered key-value container. | `hashmap`    | 
 
 The following macros need to be defined just once:
 
 | Macro                  | Description                                                 | Default                                        |
 |------------------------|-------------------------------------------------------------|------------------------------------------------|
 | `TDS_PREFIX`           | The data structure types are prefixed with this by default. | Empty.                                         |
+| `TDS_CALLOC`           | The `calloc` standard function.                             | `calloc`                                       |
 | `TDS_REALLOC`          | The `realloc` standard function.                            | `realloc`                                      |
 | `TDS_FREE`             | The `free` standard function.                               | `free`                                         |
 | `TDS_ASSERT`           | The `assert` standard function.                             | `assert` in debug mode, `((void)0)` otherwise. |

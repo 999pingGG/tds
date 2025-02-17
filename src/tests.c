@@ -16,6 +16,17 @@
 #define TDS_KEY_T uint64_t
 #include <tds/vector.h>
 
+#define TDS_KEY_T uint8_t
+#define TDS_VALUE_T uint64_t
+#include <tds/hashmap.h>
+
+#define TDS_TYPE hashmap_u16_to_u8
+#define TDS_KEY_T uint16_t
+#define TDS_VALUE_T uint8_t
+#include <tds/hashmap.h>
+
+#include <tds/hashmap.h>
+
 #ifndef TESTS_NO_STATIC_ASSERT
 #include <assert.h>
 
@@ -34,6 +45,9 @@ typedef struct test_data_structures_t {
   vec_uint16_t uint16_vec;
   vec_int int_vec;
   vector_u64 uint64_vec;
+  hashmap_uint8_t_uint64_t uint64_hashmap;
+  hashmap_u16_to_u8 u8_hashmap;
+  hashmap_int_int int_hashmap;
 } test_data_structures_t;
 
 static void* setup(const MunitParameter params[], void* user_data) {
@@ -49,6 +63,9 @@ static void tear_down(void* fixture) {
   vec_uint16_t_fini(&data_structures->uint16_vec);
   vec_int_fini(&data_structures->int_vec);
   vector_u64_fini(&data_structures->uint64_vec);
+  hashmap_uint8_t_uint64_t_fini(&data_structures->uint64_hashmap);
+  hashmap_u16_to_u8_fini(&data_structures->u8_hashmap);
+  hashmap_int_int_fini(&data_structures->int_hashmap);
   free(fixture);
 }
 
@@ -62,6 +79,21 @@ static MunitResult push(const MunitParameter* params, void* fixture) {
     vec_uint16_t_push(&data_structures->uint16_vec, (uint16_t)munit_rand_int_range(0, UINT16_MAX));
     vec_int_push(&data_structures->int_vec, munit_rand_int_range(0, INT_MAX));
     vector_u64_push(&data_structures->uint64_vec, munit_rand_int_range(0, INT_MAX));
+    hashmap_uint8_t_uint64_t_put(
+      &data_structures->uint64_hashmap,
+      munit_rand_int_range(0, UINT8_MAX),
+      munit_rand_int_range(0, INT_MAX)
+    );
+    hashmap_u16_to_u8_put(
+      &data_structures->u8_hashmap,
+      munit_rand_int_range(0, UINT16_MAX),
+      munit_rand_int_range(0, UINT8_MAX)
+    );
+    hashmap_int_int_put(
+      &data_structures->int_hashmap,
+      munit_rand_int_range(0, INT_MAX),
+      munit_rand_int_range(0, INT_MAX)
+    );
 
     munit_assert_int(vec_uint8_t_count(&data_structures->uint8_vec), ==, i + 1);
     munit_assert_int8(vec_uint16_t_count(&data_structures->uint16_vec), ==, i + 1);
@@ -100,7 +132,7 @@ static MunitResult count(const MunitParameter* params, void* fixture) {
   (void)params;
   test_data_structures_t* data_structures = fixture;
 
-  const int max = munit_rand_int_range(0, INT8_MAX);
+  const int8_t max = (int8_t)munit_rand_int_range(0, INT8_MAX);
   for (int8_t i = 0; i < max; i++) {
     vec_uint8_t_push(&data_structures->uint8_vec, 0);
     vec_uint16_t_push(&data_structures->uint16_vec, 0);
