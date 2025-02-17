@@ -11,7 +11,8 @@ typedef struct TDS_TYPE {
   TDS_SIZE_T count, capacity;
 } TDS_TYPE;
 
-void TDS_FUNCTION(push)(TDS_TYPE* vec, TDS_KEY_T value);
+void TDS_FUNCTION(append)(TDS_TYPE* vec, TDS_KEY_T value);
+void TDS_FUNCTION(remove)(TDS_TYPE* vec, TDS_SIZE_T index);
 TDS_KEY_T TDS_FUNCTION(get)(const TDS_TYPE* vec, TDS_SIZE_T index);
 TDS_SIZE_T TDS_FUNCTION(count)(const TDS_TYPE* vec);
 TDS_KEY_T* TDS_FUNCTION(first)(const TDS_TYPE* vec);
@@ -20,7 +21,7 @@ void TDS_FUNCTION(fini)(TDS_TYPE* vec);
 #endif
 
 #ifdef TDS_IMPLEMENT
-void TDS_FUNCTION(push)(TDS_TYPE* vec, const TDS_KEY_T value) {
+void TDS_FUNCTION(append)(TDS_TYPE* vec, const TDS_KEY_T value) {
   TDS_ASSERT(vec->count <= vec->capacity);
 
   if (vec->count == vec->capacity) {
@@ -38,6 +39,16 @@ void TDS_FUNCTION(push)(TDS_TYPE* vec, const TDS_KEY_T value) {
   // Guard against overflow.
   TDS_ASSERT(new_count > vec->count);
   vec->count = new_count;
+}
+
+void TDS_FUNCTION(remove)(TDS_TYPE* vec, const TDS_SIZE_T index) {
+  TDS_ASSERT(index < vec->count);
+
+  if (index < vec->count - 1) {
+    // Shift elements to the left
+    TDS_MEMMOVE(vec->array + index, vec->array + index + 1, (size_t)(vec->count - index - 1) * sizeof(TDS_KEY_T));
+  }
+  vec->count--;
 }
 
 TDS_KEY_T TDS_FUNCTION(get)(const TDS_TYPE* vec, const TDS_SIZE_T index) {

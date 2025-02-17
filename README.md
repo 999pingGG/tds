@@ -1,5 +1,5 @@
-# Tiny Data Structures
-A WIP header-only collection of simple, type-safe data structures and containers for C. So far compiles absolutely
+# Tiny Data Structures (WIP)
+A header-only collection of simple, type-safe data structures and containers for C. So far compiles absolutely
 warning-free.
 
 ## Requirements
@@ -25,17 +25,21 @@ future-proof.
   
 The following data structures are available:
 
-| Data structure | Description      | Default name | Available functions                              |
-|----------------|------------------|--------------|--------------------------------------------------|
-| Vector         | A dynamic array. | `vec`        | `push`, `get`, `count`, `first`, `clear`, `fini` |
+| Data structure | Description                                                | Default name | Available functions                                          |
+|----------------|------------------------------------------------------------|--------------|--------------------------------------------------------------|
+| Vector         | A dynamic array.                                           | `vec`        | `append`, `remove`, `get`, `count`, `first`, `clear`, `fini` |
+| Hashmap        | An unordered key-value container. Uses Robin Hood hashing. | `hashmap`    | `get`, `set`, `remove`, `count`, `clear`, `fini`             |
 
 The following macros need to be defined just once:
 
 | Macro                  | Description                                                 | Default                                        |
 |------------------------|-------------------------------------------------------------|------------------------------------------------|
 | `TDS_PREFIX`           | The data structure types are prefixed with this by default. | Empty.                                         |
+| `TDS_CALLOC`           | The `calloc` standard function.                             | `calloc`                                       |
 | `TDS_REALLOC`          | The `realloc` standard function.                            | `realloc`                                      |
 | `TDS_FREE`             | The `free` standard function.                               | `free`                                         |
+| `TDS_MEMSET`           | The `memset` standard function.                             | `memset`                                       |
+| `TDS_MEMMOVE`          | The `memmove` standard function.                            | `memmove`                                      |
 | `TDS_ASSERT`           | The `assert` standard function.                             | `assert` in debug mode, `((void)0)` otherwise. |
 | `TDS_INITIAL_CAPACITY` | The initial capacity assigned to data structures.           | `4`                                            |
 
@@ -105,4 +109,4 @@ For learning purposes, sharing the data structures across my projects and having
 - Set
 - Bitset
 - Pool
-- Octree
+- Dynamic AABB tree

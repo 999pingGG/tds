@@ -11,6 +11,7 @@ add_executable(tests
   include/tds/private/common.h
   include/tds/private/begin.inc
   include/tds/private/end.inc
+  include/tds/hashmap.h
   include/tds/vector.h
   libs/munit/munit.c
   libs/munit/munit.h

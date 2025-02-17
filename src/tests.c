@@ -16,6 +16,18 @@
 #define TDS_KEY_T uint64_t
 #include <tds/vector.h>
 
+#define TDS_SIZE_T uint8_t
+#define TDS_KEY_T uint8_t
+#define TDS_VALUE_T uint64_t
+#include <tds/hashmap.h>
+
+#define TDS_TYPE hashmap_u16_to_u8
+#define TDS_KEY_T uint16_t
+#define TDS_VALUE_T uint8_t
+#include <tds/hashmap.h>
+
+#include <tds/hashmap.h>
+
 #ifndef TESTS_NO_STATIC_ASSERT
 #include <assert.h>
 
@@ -34,6 +46,9 @@ typedef struct test_data_structures_t {
   vec_uint16_t uint16_vec;
   vec_int int_vec;
   vector_u64 uint64_vec;
+  hashmap_uint8_t_uint64_t uint64_hashmap;
+  hashmap_u16_to_u8 u8_hashmap;
+  hashmap_int_int int_hashmap;
 } test_data_structures_t;
 
 static void* setup(const MunitParameter params[], void* user_data) {
@@ -49,19 +64,37 @@ static void tear_down(void* fixture) {
   vec_uint16_t_fini(&data_structures->uint16_vec);
   vec_int_fini(&data_structures->int_vec);
   vector_u64_fini(&data_structures->uint64_vec);
+  hashmap_uint8_t_uint64_t_fini(&data_structures->uint64_hashmap);
+  hashmap_u16_to_u8_fini(&data_structures->u8_hashmap);
+  hashmap_int_int_fini(&data_structures->int_hashmap);
   free(fixture);
 }
 
-static MunitResult push(const MunitParameter* params, void* fixture) {
+static MunitResult append(const MunitParameter* params, void* fixture) {
   (void)params;
   test_data_structures_t* data_structures = fixture;
 
   // Use INT8_MAX due to using a TDS_SIZE_T of type int8_t
   for (int8_t i = 0; i < INT8_MAX; i++) {
-    vec_uint8_t_push(&data_structures->uint8_vec, (uint8_t)munit_rand_int_range(0, UINT8_MAX));
-    vec_uint16_t_push(&data_structures->uint16_vec, (uint16_t)munit_rand_int_range(0, UINT16_MAX));
-    vec_int_push(&data_structures->int_vec, munit_rand_int_range(0, INT_MAX));
-    vector_u64_push(&data_structures->uint64_vec, munit_rand_int_range(0, INT_MAX));
+    vec_uint8_t_append(&data_structures->uint8_vec, (uint8_t)munit_rand_int_range(0, UINT8_MAX));
+    vec_uint16_t_append(&data_structures->uint16_vec, (uint16_t)munit_rand_int_range(0, UINT16_MAX));
+    vec_int_append(&data_structures->int_vec, munit_rand_int_range(0, INT_MAX));
+    vector_u64_append(&data_structures->uint64_vec, munit_rand_int_range(0, INT_MAX));
+    hashmap_uint8_t_uint64_t_set(
+      &data_structures->uint64_hashmap,
+      (uint8_t)munit_rand_int_range(0, UINT8_MAX),
+      munit_rand_int_range(0, INT_MAX)
+    );
+    hashmap_u16_to_u8_set(
+      &data_structures->u8_hashmap,
+      (uint16_t)munit_rand_int_range(0, UINT16_MAX),
+      (uint8_t)munit_rand_int_range(0, UINT8_MAX)
+    );
+    hashmap_int_int_set(
+      &data_structures->int_hashmap,
+      munit_rand_int_range(0, INT_MAX),
+      munit_rand_int_range(0, INT_MAX)
+    );
 
     munit_assert_int(vec_uint8_t_count(&data_structures->uint8_vec), ==, i + 1);
     munit_assert_int8(vec_uint16_t_count(&data_structures->uint16_vec), ==, i + 1);
@@ -72,7 +105,55 @@ static MunitResult push(const MunitParameter* params, void* fixture) {
   return MUNIT_OK;
 }
 
-static MunitResult get(const MunitParameter* params, void* fixture) {
+static MunitResult remove(const MunitParameter* params, void* fixture) {
+  (void)params;
+  test_data_structures_t* data_structures = fixture;
+
+  int values[INT8_MAX];
+  for (int8_t i = 0; i < INT8_MAX; i++) {
+    values[i] = munit_rand_int_range(0, UINT16_MAX);
+    vec_uint8_t_append(&data_structures->uint8_vec, (uint8_t)values[i]);
+    vec_uint16_t_append(&data_structures->uint16_vec, (uint16_t)values[i]);
+    vec_int_append(&data_structures->int_vec, values[i]);
+    vector_u64_append(&data_structures->uint64_vec, values[i]);
+  }
+
+  vec_uint8_t_remove(&data_structures->uint8_vec, 0);
+  munit_assert_uint8(vec_uint8_t_get(&data_structures->uint8_vec, 0), ==, (uint8_t)values[1]);
+  munit_assert_uint8(vec_uint8_t_get(&data_structures->uint8_vec, 100), ==, (uint8_t)values[101]);
+  munit_assert_uint32(vec_uint8_t_count(&data_structures->uint8_vec), ==, 126);
+
+  for (int i = 0; i < 80; i++) {
+    vec_uint8_t_remove(&data_structures->uint8_vec, 1);
+    munit_assert_uint8(vec_uint8_t_get(&data_structures->uint8_vec, 0), ==, (uint8_t)values[1]);
+    munit_assert_uint8(vec_uint8_t_get(&data_structures->uint8_vec, 10), ==, (uint8_t)values[12 + i]);
+    munit_assert_uint32(vec_uint8_t_count(&data_structures->uint8_vec), ==, 125 - i);
+  }
+
+  vec_uint16_t_remove(&data_structures->uint16_vec, 10);
+  munit_assert_int(vec_uint16_t_get(&data_structures->uint16_vec, 20), ==, values[21]);
+  munit_assert_int(vec_uint16_t_get(&data_structures->uint16_vec, 125), ==, values[126]);
+  munit_assert_int(vec_uint16_t_count(&data_structures->uint16_vec), ==, 126);
+
+  vec_uint16_t_remove(&data_structures->uint16_vec, 125);
+  munit_assert_int(vec_uint16_t_get(&data_structures->uint16_vec, 0), ==, values[0]);
+  munit_assert_int(vec_uint16_t_get(&data_structures->uint16_vec, 124), ==, values[125]);
+  munit_assert_int(vec_uint16_t_count(&data_structures->uint16_vec), ==, 125);
+
+  while (vec_uint16_t_count(&data_structures->uint16_vec)) {
+    vec_uint16_t_remove(&data_structures->uint16_vec, 0);
+  }
+  munit_assert_int8(vec_uint16_t_count(&data_structures->uint16_vec), ==, 0);
+
+  vector_u64_remove(&data_structures->uint64_vec, vector_u64_count(&data_structures->uint64_vec) - 1);
+  munit_assert_uint64(
+    vector_u64_get(&data_structures->uint64_vec, vector_u64_count(&data_structures->uint64_vec) - 1), ==, values[125]
+  );
+
+  return MUNIT_OK;
+}
+
+static MunitResult get_set(const MunitParameter* params, void* fixture) {
   (void)params;
   test_data_structures_t* data_structures = fixture;
 
@@ -82,15 +163,44 @@ static MunitResult get(const MunitParameter* params, void* fixture) {
   }
 
   for (int8_t i = 0; i < INT8_MAX; i++) {
-    vec_uint8_t_push(&data_structures->uint8_vec, (uint8_t)values[i]);
-    vec_uint16_t_push(&data_structures->uint16_vec, (uint16_t)values[i]);
-    vec_int_push(&data_structures->int_vec, values[i]);
-    vector_u64_push(&data_structures->uint64_vec, values[i]);
+    vec_uint8_t_append(&data_structures->uint8_vec, (uint8_t)values[i]);
+    vec_uint16_t_append(&data_structures->uint16_vec, (uint16_t)values[i]);
+    vec_int_append(&data_structures->int_vec, values[i]);
+    vector_u64_append(&data_structures->uint64_vec, values[i]);
+    hashmap_uint8_t_uint64_t_set(
+      &data_structures->uint64_hashmap,
+      (uint8_t)i,
+      values[i]
+    );
+    hashmap_u16_to_u8_set(
+      &data_structures->u8_hashmap,
+      (uint16_t)i,
+      (uint8_t)values[i]
+    );
+    hashmap_int_int_set(
+      &data_structures->int_hashmap,
+      i,
+      values[i]
+    );
+  }
 
-    munit_assert_uint8(vec_uint8_t_get(&data_structures->uint8_vec, i), ==, (uint8_t)values[i]);
-    munit_assert_uint16(vec_uint16_t_get(&data_structures->uint16_vec, i), ==, (uint16_t)values[i]);
-    munit_assert_int(vec_int_get(&data_structures->int_vec, i), ==, values[i]);
-    munit_assert_uint64(vector_u64_get(&data_structures->uint64_vec, i), ==, values[i]);
+  for (int8_t i = 0; i < INT8_MAX; i++) {
+    munit_assert_uint8(vec_uint8_t_get(&data_structures->uint8_vec, i), == , (uint8_t)values[i]);
+    munit_assert_uint16(vec_uint16_t_get(&data_structures->uint16_vec, i), == , (uint16_t)values[i]);
+    munit_assert_int(vec_int_get(&data_structures->int_vec, i), == , values[i]);
+    munit_assert_uint64(vector_u64_get(&data_structures->uint64_vec, i), == , values[i]);
+
+    const uint64_t* result1 = hashmap_uint8_t_uint64_t_get(&data_structures->uint64_hashmap, (uint8_t)i);
+    munit_assert_not_null(result1);
+    munit_assert_uint64(*result1, == , values[i]);
+
+    const uint8_t* result2 = hashmap_u16_to_u8_get(&data_structures->u8_hashmap, (uint16_t)i);
+    munit_assert_not_null(result2);
+    munit_assert_uint8(*result2, == , (uint8_t)values[i]);
+
+    const int* result3 = hashmap_int_int_get(&data_structures->int_hashmap, i);
+    munit_assert_not_null(result3);
+    munit_assert_int(*result3, == , values[i]);
   }
 
   return MUNIT_OK;
@@ -100,42 +210,41 @@ static MunitResult count(const MunitParameter* params, void* fixture) {
   (void)params;
   test_data_structures_t* data_structures = fixture;
 
-  const int max = munit_rand_int_range(0, INT8_MAX);
+  const int8_t max = (int8_t)munit_rand_int_range(0, INT8_MAX);
   for (int8_t i = 0; i < max; i++) {
-    vec_uint8_t_push(&data_structures->uint8_vec, 0);
-    vec_uint16_t_push(&data_structures->uint16_vec, 0);
-    vec_int_push(&data_structures->int_vec, 0);
-    vector_u64_push(&data_structures->uint64_vec, 0);
+    vec_uint8_t_append(&data_structures->uint8_vec, 0);
+    vec_uint16_t_append(&data_structures->uint16_vec, 0);
+    vec_int_append(&data_structures->int_vec, 0);
+    vector_u64_append(&data_structures->uint64_vec, 0);
+    hashmap_uint8_t_uint64_t_set(&data_structures->uint64_hashmap, 0, 0);
+    hashmap_u16_to_u8_set(&data_structures->u8_hashmap, i, 0);
+    hashmap_int_int_set(&data_structures->int_hashmap, i * 5, 0);
 
     munit_assert_int(vec_uint8_t_count(&data_structures->uint8_vec), ==, i + 1);
     munit_assert_int8(vec_uint16_t_count(&data_structures->uint16_vec), ==, i + 1);
     munit_assert_int(vec_int_count(&data_structures->int_vec), ==, i + 1);
     munit_assert_int(vector_u64_count(&data_structures->uint64_vec), ==, i + 1);
+    munit_assert_uint32(hashmap_uint8_t_uint64_t_count(&data_structures->uint64_hashmap), ==, 1);
+    munit_assert_uint32(hashmap_u16_to_u8_count(&data_structures->u8_hashmap), ==, i + 1);
+    munit_assert_uint32(hashmap_int_int_count(&data_structures->int_hashmap), ==, i + 1);
   }
 
   return MUNIT_OK;
 }
 
+#define TDS_TEST(fun) {\
+  .name = "/"#fun,\
+  .test = fun,\
+  .setup = setup,\
+  .tear_down = tear_down,\
+}
+
 int main(const int argc, char* const* argv) {
   MunitTest containers[] = {
-    {
-      .name = "push",
-      .test = push,
-      .setup = setup,
-      .tear_down = tear_down,
-    },
-    {
-      .name = "get",
-      .test = get,
-      .setup = setup,
-      .tear_down = tear_down,
-    },
-    {
-      .name = "count",
-      .test = count,
-      .setup = setup,
-      .tear_down = tear_down,
-    },
+    TDS_TEST(append),
+    TDS_TEST(remove),
+    TDS_TEST(get_set),
+    TDS_TEST(count),
     { 0 },
   };
 
