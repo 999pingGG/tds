@@ -108,8 +108,9 @@ static MunitResult get(const MunitParameter* params, void* fixture) {
   (void)params;
   test_data_structures_t* data_structures = fixture;
 
-  int values[INT8_MAX];
+  int keys[INT8_MAX], values[INT8_MAX];
   for (int8_t i = 0; i < INT8_MAX; i++) {
+    keys[i] = munit_rand_int_range(0, INT8_MAX);
     values[i] = munit_rand_int_range(0, INT_MAX);
   }
 
@@ -118,11 +119,38 @@ static MunitResult get(const MunitParameter* params, void* fixture) {
     vec_uint16_t_push(&data_structures->uint16_vec, (uint16_t)values[i]);
     vec_int_push(&data_structures->int_vec, values[i]);
     vector_u64_push(&data_structures->uint64_vec, values[i]);
+    hashmap_uint8_t_uint64_t_put(
+      &data_structures->uint64_hashmap,
+      (uint8_t)keys[i],
+      values[i]
+    );
+    hashmap_u16_to_u8_put(
+      &data_structures->u8_hashmap,
+      (uint16_t)keys[i],
+      (uint8_t)values[i]
+    );
+    hashmap_int_int_put(
+      &data_structures->int_hashmap,
+      keys[i],
+      values[i]
+    );
 
     munit_assert_uint8(vec_uint8_t_get(&data_structures->uint8_vec, i), ==, (uint8_t)values[i]);
     munit_assert_uint16(vec_uint16_t_get(&data_structures->uint16_vec, i), ==, (uint16_t)values[i]);
     munit_assert_int(vec_int_get(&data_structures->int_vec, i), ==, values[i]);
     munit_assert_uint64(vector_u64_get(&data_structures->uint64_vec, i), ==, values[i]);
+
+    const uint64_t* result1 = hashmap_uint8_t_uint64_t_get(&data_structures->uint64_hashmap, (uint8_t)keys[i]);
+    munit_assert_not_null(result1);
+    munit_assert_uint64(*result1, ==, values[i]);
+
+    const uint8_t* result2 = hashmap_u16_to_u8_get(&data_structures->u8_hashmap, (uint16_t)keys[i]);
+    munit_assert_not_null(result2);
+    munit_assert_uint8(*result2, ==, (uint8_t)values[i]);
+
+    const int* result3 = hashmap_int_int_get(&data_structures->int_hashmap, keys[i]);
+    munit_assert_not_null(result3);
+    munit_assert_int(*result3, ==, values[i]);
   }
 
   return MUNIT_OK;
@@ -138,11 +166,17 @@ static MunitResult count(const MunitParameter* params, void* fixture) {
     vec_uint16_t_push(&data_structures->uint16_vec, 0);
     vec_int_push(&data_structures->int_vec, 0);
     vector_u64_push(&data_structures->uint64_vec, 0);
+    hashmap_uint8_t_uint64_t_put(&data_structures->uint64_hashmap, 0, 0);
+    hashmap_u16_to_u8_put(&data_structures->u8_hashmap, i, 0);
+    hashmap_int_int_put(&data_structures->int_hashmap, i * 5, 0);
 
     munit_assert_int(vec_uint8_t_count(&data_structures->uint8_vec), ==, i + 1);
     munit_assert_int8(vec_uint16_t_count(&data_structures->uint16_vec), ==, i + 1);
     munit_assert_int(vec_int_count(&data_structures->int_vec), ==, i + 1);
     munit_assert_int(vector_u64_count(&data_structures->uint64_vec), ==, i + 1);
+    munit_assert_uint32(hashmap_uint8_t_uint64_t_count(&data_structures->uint64_hashmap), ==, 1);
+    munit_assert_uint32(hashmap_u16_to_u8_count(&data_structures->u8_hashmap), ==, i + 1);
+    munit_assert_uint32(hashmap_int_int_count(&data_structures->int_hashmap), ==, i + 1);
   }
 
   return MUNIT_OK;

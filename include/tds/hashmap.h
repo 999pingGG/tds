@@ -22,26 +22,17 @@ typedef struct TDS_TYPE {
   TDS_SIZE_T capacity; // Total capacity, a prime number.
 } TDS_TYPE;
 
-// Inserts a key-value pair into the hashmap
 void TDS_FUNCTION(put)(TDS_TYPE* map, TDS_KEY_T key, TDS_VALUE_T value);
-
-// Returns pointer to the stored value if key is found, or NULL.
 TDS_VALUE_T* TDS_FUNCTION(get)(const TDS_TYPE* map, TDS_KEY_T key);
-
 TDS_SIZE_T TDS_FUNCTION(count)(const TDS_TYPE* map);
-
-// Clears all entries.
 void TDS_FUNCTION(clear)(TDS_TYPE* map);
-
-// Finalizes the hashmap.
 void TDS_FUNCTION(fini)(TDS_TYPE* map);
 #endif
 
 #ifdef TDS_IMPLEMENT
-#define LOAD_FACTOR 0.85
+#define TDS_HASHMAP_LOAD_FACTOR 0.85
 
 void TDS_FUNCTION(put)(TDS_TYPE* map, const TDS_KEY_T key, const TDS_VALUE_T value) {
-  // Lazy initialization.
   if (!map->buckets) {
     // Yeah, we ignore TDS_INITIAL_CAPACITY here because we need the capacity to be a prime number.
     map->capacity = 11;
@@ -49,21 +40,20 @@ void TDS_FUNCTION(put)(TDS_TYPE* map, const TDS_KEY_T key, const TDS_VALUE_T val
   }
 
   // Ensure the map has room for at least one more entry.
-  if ((double)(map->count + 1) > (double)map->capacity * LOAD_FACTOR) {
+  if ((double)(map->count + 1) > (double)map->capacity * TDS_HASHMAP_LOAD_FACTOR) {
     // Find the smaller prime number that is at least as big as the required capacity.
-    TDS_SIZE_T new_capacity = map->capacity * 2;
-
     static const unsigned long long prime_list[64] = {
       2, 3, 5, 11, 17, 37, 67, 131, 257, 521, 1031, 2053, 4099, 8209, 16411, 32771, 65537, 131101, 262147, 524309,
       1048583, 2097169, 4194319, 8388617, 16777259, 33554467, 67108879, 134217757, 268435459, 536870923, 1073741827,
       2147483659, 4294967311, 8589934609, 17179869209, 34359738421, 68719476767, 137438953481, 274877906951,
-      549755813911,
-      1099511627791, 2199023255579, 4398046511119, 8796093022237, 17592186044423, 35184372088891, 70368744177679,
-      140737488355333, 281474976710677, 562949953421381, 1125899906842679, 2251799813685269, 4503599627370517,
-      9007199254740997, 18014398509482143, 36028797018963971, 72057594037928017, 144115188075855881, 288230376151711813,
-      576460752303423619, 1152921504606847009, 2305843009213693967, 4611686018427388039, 9223372036854775837ull,
+      549755813911, 1099511627791, 2199023255579, 4398046511119, 8796093022237, 17592186044423, 35184372088891,
+      70368744177679, 140737488355333, 281474976710677, 562949953421381, 1125899906842679, 2251799813685269,
+      4503599627370517, 9007199254740997, 18014398509482143, 36028797018963971, 72057594037928017, 144115188075855881,
+      288230376151711813, 576460752303423619, 1152921504606847009, 2305843009213693967, 4611686018427388039,
+      9223372036854775837ull,
     };
 
+    TDS_SIZE_T new_capacity = map->capacity * 2;
     char found = 0;
     for (int i = 0; i < 64; i++) {
       if (prime_list[i] < new_capacity) {
@@ -88,24 +78,21 @@ void TDS_FUNCTION(put)(TDS_TYPE* map, const TDS_KEY_T key, const TDS_VALUE_T val
 
         // Insert entry.
         TDS_SIZE_T index = entry.hash % new_capacity;
-        size_t dist = 0;
         while (1) {
           TDS_ENTRY_T* cur = new_buckets + index;
           if (!cur->occupied) {
-            entry.dist = dist;
             new_buckets[index] = entry;
             break;
           }
-          // Robin Hood: swap if our probe distance is higher.
-          if (cur->dist < dist) {
+          // Robin Hood: Swap if our probe distance is higher.
+          if (cur->dist < entry.dist) {
             const TDS_ENTRY_T temp = *cur;
             *cur = entry;
             entry = temp;
-            dist = cur->dist;
           }
           index = (index + 1) % new_capacity;
-          dist++;
-          TDS_ASSERT(dist < new_capacity);
+          entry.dist++;
+          TDS_ASSERT(entry.dist < new_capacity);
         }
       }
     }
@@ -125,8 +112,7 @@ void TDS_FUNCTION(put)(TDS_TYPE* map, const TDS_KEY_T key, const TDS_VALUE_T val
   };
 
   TDS_SIZE_T index = hash % map->capacity;
-  size_t dist = 0;
-
+  TDS_SIZE_T dist = 0;
   while (1) {
     TDS_ENTRY_T* cur = &map->buckets[index];
     if (!cur->occupied) {
@@ -137,12 +123,13 @@ void TDS_FUNCTION(put)(TDS_TYPE* map, const TDS_KEY_T key, const TDS_VALUE_T val
     }
 
     if (cur->hash == hash && cur->key == key) {
-      // Key already exists; update the value.
+      // Key matches; update the value.
       cur->value = value;
       return;
     }
+
     if (cur->dist < dist) {
-      // Swap our entry with the one already here.
+      // Robin Hood swaps our entry with the one already here.
       const TDS_ENTRY_T temp = *cur;
       *cur = new_entry;
       new_entry = temp;
@@ -162,18 +149,21 @@ TDS_VALUE_T* TDS_FUNCTION(get)(const TDS_TYPE* map, const TDS_KEY_T key) {
 
   const uint64_t hash = rapidhash(&key, sizeof(key));
   TDS_SIZE_T index = hash % map->capacity;
-  size_t dist = 0;
+  TDS_SIZE_T dist = 0;
   while (1) {
     TDS_ENTRY_T* cur = &map->buckets[index];
     if (!cur->occupied) {
+      // Key not found.
       return NULL;
     }
+
     if (cur->hash == hash && cur->key == key) {
+      // Key found.
       return &cur->value;
     }
-    if (cur->dist < dist) {
-      return NULL;
-    }
+
+    TDS_ASSERT(cur->dist >= dist);
+
     index = (index + 1) % map->capacity;
     dist++;
   }
