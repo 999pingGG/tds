@@ -1,7 +1,7 @@
-#include <munit.h>
-
 #include <limits.h>
 #include <stdint.h>
+
+#include <munit.h>
 
 #define TDS_KEY_T uint8_t
 #include <tds/vector.h>
@@ -28,6 +28,8 @@
 
 #include <tds/hashmap.h>
 
+#include <tds/set.h>
+
 #ifndef TESTS_NO_STATIC_ASSERT
 #include <assert.h>
 
@@ -49,6 +51,7 @@ typedef struct test_data_structures_t {
   hashmap_uint8_t_uint64_t uint64_hashmap;
   hashmap_u16_to_u8 u8_hashmap;
   hashmap_int_int int_hashmap;
+  set_int int_set;
 } test_data_structures_t;
 
 static void* setup(const MunitParameter params[], void* user_data) {
@@ -67,6 +70,7 @@ static void tear_down(void* fixture) {
   hashmap_uint8_t_uint64_t_fini(&data_structures->uint64_hashmap);
   hashmap_u16_to_u8_fini(&data_structures->u8_hashmap);
   hashmap_int_int_fini(&data_structures->int_hashmap);
+  set_int_fini(&data_structures->int_set);
   free(fixture);
 }
 
@@ -95,17 +99,19 @@ static MunitResult append(const MunitParameter* params, void* fixture) {
       munit_rand_int_range(0, INT_MAX),
       munit_rand_int_range(0, INT_MAX)
     );
+    set_int_add(&data_structures->int_set, munit_rand_int_range(0, INT_MAX));
 
     munit_assert_int(vec_uint8_t_count(&data_structures->uint8_vec), ==, i + 1);
     munit_assert_int8(vec_uint16_t_count(&data_structures->uint16_vec), ==, i + 1);
     munit_assert_int(vec_int_count(&data_structures->int_vec), ==, i + 1);
     munit_assert_int(vector_u64_count(&data_structures->uint64_vec), ==, i + 1);
+    munit_assert_int(set_int_count(&data_structures->int_set), == , i + 1);
   }
 
   return MUNIT_OK;
 }
 
-static MunitResult remove(const MunitParameter* params, void* fixture) {
+static MunitResult remove_test(const MunitParameter* params, void* fixture) {
   (void)params;
   test_data_structures_t* data_structures = fixture;
 
@@ -116,6 +122,10 @@ static MunitResult remove(const MunitParameter* params, void* fixture) {
     vec_uint16_t_append(&data_structures->uint16_vec, (uint16_t)values[i]);
     vec_int_append(&data_structures->int_vec, values[i]);
     vector_u64_append(&data_structures->uint64_vec, values[i]);
+    hashmap_uint8_t_uint64_t_set(&data_structures->uint64_hashmap, i, values[i]);
+    hashmap_u16_to_u8_set(&data_structures->u8_hashmap, i, (uint8_t)values[i]);
+    hashmap_int_int_set(&data_structures->int_hashmap, i, values[i]);
+    set_int_add(&data_structures->int_set, values[i]);
   }
 
   vec_uint8_t_remove(&data_structures->uint8_vec, 0);
@@ -150,6 +160,51 @@ static MunitResult remove(const MunitParameter* params, void* fixture) {
     vector_u64_get(&data_structures->uint64_vec, vector_u64_count(&data_structures->uint64_vec) - 1), ==, values[125]
   );
 
+  int counts[] = {
+    hashmap_uint8_t_uint64_t_count(&data_structures->uint64_hashmap),
+    hashmap_u16_to_u8_count(&data_structures->u8_hashmap),
+    hashmap_int_int_count(&data_structures->int_hashmap),
+  };
+  for (
+    int i = 300, j = 300, k = 300;
+    i >= 0 && j >= 0 && k >= 0;
+    i -= munit_rand_int_range(0, 5), j -= munit_rand_int_range(0, 5), k -= munit_rand_int_range(0, 5)
+  ) {
+    if (hashmap_uint8_t_uint64_t_get(&data_structures->uint64_hashmap, (uint8_t)i)) {
+      counts[0]--;
+    }
+    if (hashmap_u16_to_u8_get(&data_structures->u8_hashmap, (uint16_t)i)) {
+      counts[1]--;
+    }
+    if (hashmap_int_int_get(&data_structures->int_hashmap, i)) {
+      counts[2]--;
+    }
+    hashmap_uint8_t_uint64_t_remove(&data_structures->uint64_hashmap, (uint8_t)i);
+    hashmap_uint8_t_uint64_t_remove(&data_structures->uint64_hashmap, (uint8_t)i);
+    hashmap_uint8_t_uint64_t_remove(&data_structures->uint64_hashmap, (uint8_t)i);
+    hashmap_u16_to_u8_remove(&data_structures->u8_hashmap, (uint16_t)i);
+    hashmap_u16_to_u8_remove(&data_structures->u8_hashmap, (uint16_t)i);
+    hashmap_int_int_remove(&data_structures->int_hashmap, i);
+  }
+
+  munit_assert_int(hashmap_uint8_t_uint64_t_count(&data_structures->uint64_hashmap), ==, counts[0]);
+  munit_assert_int(hashmap_u16_to_u8_count(&data_structures->u8_hashmap), ==, counts[1]);
+  munit_assert_int(hashmap_int_int_count(&data_structures->int_hashmap), ==, counts[2]);
+
+  for (int i = 0; i < 100; i++) {
+    int should_contain = 1;
+    for (int j = 0; j < i; j++) {
+      if (values[j] == values[i]) {
+        // If the value appears more than once, then it's already removed.
+        should_contain = 0;
+        break;
+      }
+    }
+    munit_assert_int(set_int_contains(&data_structures->int_set, values[i]), ==, should_contain);
+    set_int_remove(&data_structures->int_set, values[i]);
+  }
+  munit_assert_uint32(set_int_count(&data_structures->int_set), ==, TDS_COUNTOF(values) - 100);
+
   return MUNIT_OK;
 }
 
@@ -167,21 +222,45 @@ static MunitResult get_set(const MunitParameter* params, void* fixture) {
     vec_uint16_t_append(&data_structures->uint16_vec, (uint16_t)values[i]);
     vec_int_append(&data_structures->int_vec, values[i]);
     vector_u64_append(&data_structures->uint64_vec, values[i]);
+
     hashmap_uint8_t_uint64_t_set(
       &data_structures->uint64_hashmap,
       (uint8_t)i,
       values[i]
     );
+    int count = hashmap_uint8_t_uint64_t_count(&data_structures->uint64_hashmap);
+    hashmap_uint8_t_uint64_t_set(
+      &data_structures->uint64_hashmap,
+      (uint8_t)i,
+      values[i]
+    );
+    munit_assert_int(count, ==, hashmap_uint8_t_uint64_t_count(&data_structures->uint64_hashmap));
+
     hashmap_u16_to_u8_set(
       &data_structures->u8_hashmap,
       (uint16_t)i,
       (uint8_t)values[i]
     );
+    count = hashmap_u16_to_u8_count(&data_structures->u8_hashmap);
+    hashmap_u16_to_u8_set(
+      &data_structures->u8_hashmap,
+      (uint16_t)i,
+      (uint8_t)values[i]
+    );
+    munit_assert_int(count, ==, hashmap_u16_to_u8_count(&data_structures->u8_hashmap));
+
     hashmap_int_int_set(
       &data_structures->int_hashmap,
       i,
       values[i]
     );
+    count = hashmap_int_int_count(&data_structures->int_hashmap);
+    hashmap_int_int_set(
+      &data_structures->int_hashmap,
+      i,
+      values[i]
+    );
+    munit_assert_int(count, ==, hashmap_int_int_count(&data_structures->int_hashmap));
   }
 
   for (int8_t i = 0; i < INT8_MAX; i++) {
@@ -242,7 +321,7 @@ static MunitResult count(const MunitParameter* params, void* fixture) {
 int main(const int argc, char* const* argv) {
   MunitTest containers[] = {
     TDS_TEST(append),
-    TDS_TEST(remove),
+    TDS_TEST(remove_test),
     TDS_TEST(get_set),
     TDS_TEST(count),
     { 0 },

@@ -25,10 +25,11 @@ future-proof.
   
 The following data structures are available:
 
-| Data structure | Description                                                | Default name | Available functions                                          |
-|----------------|------------------------------------------------------------|--------------|--------------------------------------------------------------|
-| Vector         | A dynamic array.                                           | `vec`        | `append`, `remove`, `get`, `count`, `first`, `clear`, `fini` |
-| Hashmap        | An unordered key-value container. Uses Robin Hood hashing. | `hashmap`    | `get`, `set`, `remove`, `count`, `clear`, `fini`             |
+| Data structure | Description                                                                                      | Default name | Available functions                                          |
+|----------------|--------------------------------------------------------------------------------------------------|--------------|--------------------------------------------------------------|
+| Vector         | A dynamic array.                                                                                 | `vec`        | `append`, `remove`, `get`, `count`, `first`, `clear`, `fini` |
+| Hashmap        | An unordered key-value container. Uses Robin Hood hashing.                                       | `hashmap`    | `get`, `set`, `remove`, `count`, `clear`, `fini`             |
+| Set            | An unordered container of unique values, like a hashmap without values. Uses Robin Hood hashing. | `set`        | `contains`, `add`, `remove`, `count`, `clear`, `fini`        |
 
 The following macros need to be defined just once:
 

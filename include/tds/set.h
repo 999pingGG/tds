@@ -2,7 +2,7 @@
 #include "private/begin.inc"
 
 #ifndef TDS_TYPE
-#define TDS_TYPE TDS_DEFAULT_TYPE_W_KEY_VALUE(hashmap)
+#define TDS_TYPE TDS_DEFAULT_TYPE_W_KEY(set)
 #endif
 
 #define TDS_ENTRY_T TDS_JOIN2(TDS_TYPE, _entry)
@@ -11,7 +11,6 @@
 typedef struct TDS_ENTRY_T {
   uint64_t hash;
   TDS_SIZE_T probe_sequence_length;
-  TDS_KEY_T key;
   TDS_VALUE_T value;
   char occupied;
 } TDS_ENTRY_T;
@@ -22,55 +21,55 @@ typedef struct TDS_TYPE {
   TDS_SIZE_T capacity; // Always a prime number.
 } TDS_TYPE;
 
-TDS_VALUE_T* TDS_FUNCTION(get)(const TDS_TYPE* map, TDS_KEY_T key);
-void TDS_FUNCTION(set)(TDS_TYPE* map, TDS_KEY_T key, TDS_VALUE_T value);
-void TDS_FUNCTION(remove)(TDS_TYPE* map, TDS_KEY_T key);
-TDS_SIZE_T TDS_FUNCTION(count)(const TDS_TYPE* map);
-void TDS_FUNCTION(clear)(TDS_TYPE* map);
-void TDS_FUNCTION(fini)(TDS_TYPE* map);
+int TDS_FUNCTION(contains)(const TDS_TYPE* set, TDS_KEY_T value);
+void TDS_FUNCTION(add)(TDS_TYPE* set, TDS_VALUE_T value);
+void TDS_FUNCTION(remove)(TDS_TYPE* set, TDS_KEY_T value);
+TDS_SIZE_T TDS_FUNCTION(count)(const TDS_TYPE* set);
+void TDS_FUNCTION(clear)(TDS_TYPE* set);
+void TDS_FUNCTION(fini)(TDS_TYPE* set);
 #endif
 
 #ifdef TDS_IMPLEMENT
-TDS_VALUE_T* TDS_FUNCTION(get)(const TDS_TYPE* map, const TDS_KEY_T key) {
-  if (!map->buckets) {
-    return NULL;
+int TDS_FUNCTION(contains)(const TDS_TYPE* set, const TDS_KEY_T value) {
+  if (!set->buckets) {
+    return 0;
   }
 
-  const uint64_t hash = rapidhash(&key, sizeof(key));
-  TDS_SIZE_T index = hash % map->capacity;
+  const uint64_t hash = rapidhash(&value, sizeof(value));
+  TDS_SIZE_T index = hash % set->capacity;
   // The "for" instead of a "while" loop is just to guard against infinite loops.
-  for (TDS_SIZE_T i = 0; i < map->capacity; i++) {
-    TDS_ENTRY_T* cur = map->buckets + index;
+  for (TDS_SIZE_T i = 0; i < set->capacity; i++) {
+    TDS_ENTRY_T* cur = set->buckets + index;
 
     if (!cur->occupied) {
       // Key not found.
-      return NULL;
+      return 0;
     }
 
-    if (cur->hash == hash && cur->key == key) {
+    if (cur->hash == hash && cur->value == value) {
       // Key found.
-      return &cur->value;
+      return 1;
     }
 
-    index = (index + 1) % map->capacity;
+    index = (index + 1) % set->capacity;
   }
 
   TDS_ASSERT(0);
-  return NULL;
+  return 0;
 }
 
-void TDS_FUNCTION(set)(TDS_TYPE* map, const TDS_KEY_T key, const TDS_VALUE_T value) {
-  if (!map->buckets) {
+void TDS_FUNCTION(add)(TDS_TYPE* set, const TDS_VALUE_T value) {
+  if (!set->buckets) {
     // Yeah, we ignore TDS_INITIAL_CAPACITY here because we need the capacity to be a prime number.
-    map->capacity = 11;
-    map->buckets = TDS_CALLOC(map->capacity, sizeof(TDS_ENTRY_T));
+    set->capacity = 11;
+    set->buckets = TDS_CALLOC(set->capacity, sizeof(TDS_ENTRY_T));
   }
 
   TDS_SIZE_T index;
-
-  // Ensure the map has room for at least one more entry.
+  
+  // Ensure the set has room for at least one more entry.
   // Check load factor > 0.75 by using integer math instead of floating-point math.
-  if ((map->count + 1) * 4 > map->capacity * 3) {
+  if ((set->count + 1) * 4 > set->capacity * 3) {
     // Find the smaller prime number that is at least as big as the required capacity.
     static const unsigned long long prime_list[] = {
       2, 3, 5, 11, 17, 37, 67, 131, 257, 521, 1031, 2053, 4099, 8209, 16411, 32771, 65537, 131101, 262147, 524309,
@@ -83,8 +82,8 @@ void TDS_FUNCTION(set)(TDS_TYPE* map, const TDS_KEY_T key, const TDS_VALUE_T val
       9223372036854775837ull,
     };
 
-    TDS_SIZE_T new_capacity = map->capacity * 2;
-    if (new_capacity < map->capacity) {
+    TDS_SIZE_T new_capacity = set->capacity * 2;
+    if (new_capacity < set->capacity) {
       // Handle overflow.
       new_capacity = TDS_MAX_VALUE(TDS_SIZE_T);
     } else {
@@ -100,8 +99,8 @@ void TDS_FUNCTION(set)(TDS_TYPE* map, const TDS_KEY_T key, const TDS_VALUE_T val
 
     // Rehashing.
     TDS_ENTRY_T* new_buckets = TDS_CALLOC(new_capacity, sizeof(TDS_ENTRY_T));
-    for (TDS_SIZE_T i = 0; i < map->capacity; i++) {
-      TDS_ENTRY_T entry = map->buckets[i];
+    for (TDS_SIZE_T i = 0; i < set->capacity; i++) {
+      TDS_ENTRY_T entry = set->buckets[i];
       if (!entry.occupied) {
         continue;
       }
@@ -129,33 +128,31 @@ void TDS_FUNCTION(set)(TDS_TYPE* map, const TDS_KEY_T key, const TDS_VALUE_T val
       }
     }
 
-    TDS_FREE(map->buckets);
-    map->buckets = new_buckets;
-    map->capacity = new_capacity;
+    TDS_FREE(set->buckets);
+    set->buckets = new_buckets;
+    set->capacity = new_capacity;
   }
 
   // Do the insertion.
   TDS_ENTRY_T new_entry = {
-    .hash = rapidhash(&key, sizeof(key)),
+    .hash = rapidhash(&value, sizeof(value)),
     .probe_sequence_length = 0,
-    .key = key,
     .value = value,
     .occupied = 1,
   };
 
-  index = new_entry.hash % map->capacity;
+  index = new_entry.hash % set->capacity;
   while (1) {
-    TDS_ENTRY_T* cur = map->buckets + index;
+    TDS_ENTRY_T* cur = set->buckets + index;
     if (!cur->occupied) {
-      // Key doesn't exist, add it.
-      map->buckets[index] = new_entry;
-      map->count++;
+      // Value doesn't exist, add it.
+      set->buckets[index] = new_entry;
+      set->count++;
       return;
     }
 
-    if (cur->hash == new_entry.hash && cur->key == key) {
-      // Key matches, update the value.
-      cur->value = value;
+    if (cur->hash == new_entry.hash && cur->value == value) {
+      // Value matches, do nothing.
       return;
     }
 
@@ -166,36 +163,36 @@ void TDS_FUNCTION(set)(TDS_TYPE* map, const TDS_KEY_T key, const TDS_VALUE_T val
       new_entry = temp;
     }
 
-    index = (index + 1) % map->capacity;
+    index = (index + 1) % set->capacity;
     new_entry.probe_sequence_length++;
-    TDS_ASSERT(new_entry.probe_sequence_length < map->capacity);
+    TDS_ASSERT(new_entry.probe_sequence_length < set->capacity);
   }
 }
 
-void TDS_FUNCTION(remove)(TDS_TYPE* map, const TDS_KEY_T key) {
-  if (!map->buckets) {
+void TDS_FUNCTION(remove)(TDS_TYPE* set, const TDS_KEY_T value) {
+  if (!set->buckets) {
     return;
   }
 
-  const uint64_t hash = rapidhash(&key, sizeof(key));
-  TDS_SIZE_T index = hash % map->capacity;
-  for (TDS_SIZE_T i = 0; i < map->capacity; i++) {
-    TDS_ENTRY_T* cur = map->buckets + index;
+  const uint64_t hash = rapidhash(&value, sizeof(value));
+  TDS_SIZE_T index = hash % set->capacity;
+  for (TDS_SIZE_T i = 0; i < set->capacity; i++) {
+    TDS_ENTRY_T* cur = set->buckets + index;
 
     if (!cur->occupied) {
-      // Key not found.
+      // Value not found.
       return;
     }
 
-    if (cur->hash == hash && cur->key == key) {
-      // Key found, remove it by marking as unoccupied.
+    if (cur->hash == hash && cur->value == value) {
+      // Value found, remove it by marking as unoccupied.
       cur->occupied = 0;
-      map->count--;
+      set->count--;
 
       // Now, shift down the chain to maintain the probe sequence.
-      TDS_SIZE_T next_index = (index + 1) % map->capacity;
-      while (map->buckets[next_index].occupied) {
-        TDS_ENTRY_T* next_entry = map->buckets + next_index;
+      TDS_SIZE_T next_index = (index + 1) % set->capacity;
+      while (set->buckets[next_index].occupied) {
+        TDS_ENTRY_T* next_entry = set->buckets + next_index;
 
         // If the next entry is where it should be, stop shifting.
         if (next_entry->probe_sequence_length == 0) {
@@ -203,39 +200,39 @@ void TDS_FUNCTION(remove)(TDS_TYPE* map, const TDS_KEY_T key) {
         }
 
         // Move the entry to the previous slot, filling the gap.
-        map->buckets[index] = *next_entry;
-        map->buckets[index].probe_sequence_length--;
+        set->buckets[index] = *next_entry;
+        set->buckets[index].probe_sequence_length--;
         next_entry->occupied = 0;
 
         // Update the indices for the next step in the probe chain.
         index = next_index;
-        next_index = (index + 1) % map->capacity;
+        next_index = (index + 1) % set->capacity;
       }
 
       return;
     }
 
-    index = (index + 1) % map->capacity;
+    index = (index + 1) % set->capacity;
   }
 
   // This should be unreachable.
   TDS_ASSERT(0);
 }
 
-TDS_SIZE_T TDS_FUNCTION(count)(const TDS_TYPE* map) {
-  return map->count;
+TDS_SIZE_T TDS_FUNCTION(count)(const TDS_TYPE* set) {
+  return set->count;
 }
 
-void TDS_FUNCTION(clear)(TDS_TYPE* map) {
-  if (map->buckets) {
-    TDS_MEMSET(map->buckets, 0, sizeof(TDS_ENTRY_T) * map->capacity);
+void TDS_FUNCTION(clear)(TDS_TYPE* set) {
+  if (set->buckets) {
+    TDS_MEMSET(set->buckets, 0, sizeof(TDS_ENTRY_T) * set->capacity);
   }
-  map->count = 0;
+  set->count = 0;
 }
 
-void TDS_FUNCTION(fini)(TDS_TYPE* map) {
-  TDS_FREE(map->buckets);
-  *map = (TDS_TYPE){ 0 };
+void TDS_FUNCTION(fini)(TDS_TYPE* set) {
+  TDS_FREE(set->buckets);
+  *set = (TDS_TYPE){ 0 };
 }
 #endif
 
