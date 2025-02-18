@@ -86,7 +86,7 @@ void TDS_FUNCTION(set)(TDS_TYPE* map, const TDS_KEY_T key, const TDS_VALUE_T val
       // Handle overflow.
       new_capacity = TDS_MAX_VALUE(TDS_SIZE_T);
     } else {
-      for (int i = 0; i < TDS_COUNTOF(prime_list); i++) {
+      for (unsigned i = 0; i < TDS_COUNTOF(prime_list); i++) {
         if (prime_list[i] < new_capacity) {
           continue;
         }

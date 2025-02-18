@@ -133,12 +133,12 @@ static MunitResult remove(const MunitParameter* params, void* fixture) {
   vec_uint16_t_remove(&data_structures->uint16_vec, 10);
   munit_assert_int(vec_uint16_t_get(&data_structures->uint16_vec, 20), ==, values[21]);
   munit_assert_int(vec_uint16_t_get(&data_structures->uint16_vec, 125), ==, values[126]);
-  munit_assert_int(vec_uint16_t_count(&data_structures->uint16_vec), ==, 126);
+  munit_assert_int8(vec_uint16_t_count(&data_structures->uint16_vec), ==, 126);
 
   vec_uint16_t_remove(&data_structures->uint16_vec, 125);
   munit_assert_int(vec_uint16_t_get(&data_structures->uint16_vec, 0), ==, values[0]);
   munit_assert_int(vec_uint16_t_get(&data_structures->uint16_vec, 124), ==, values[125]);
-  munit_assert_int(vec_uint16_t_count(&data_structures->uint16_vec), ==, 125);
+  munit_assert_int8(vec_uint16_t_count(&data_structures->uint16_vec), ==, 125);
 
   while (vec_uint16_t_count(&data_structures->uint16_vec)) {
     vec_uint16_t_remove(&data_structures->uint16_vec, 0);
