@@ -191,6 +191,8 @@ static MunitResult remove_test(const MunitParameter* params, void* fixture) {
   munit_assert_int(hashmap_u16_to_u8_count(&data_structures->u8_hashmap), ==, counts[1]);
   munit_assert_int(hashmap_int_int_count(&data_structures->int_hashmap), ==, counts[2]);
 
+  const int total = set_int_count(&data_structures->int_set);
+  int removed = 0;
   for (int i = 0; i < 100; i++) {
     int should_contain = 1;
     for (int j = 0; j < i; j++) {
@@ -200,10 +202,15 @@ static MunitResult remove_test(const MunitParameter* params, void* fixture) {
         break;
       }
     }
+    if (should_contain) {
+      removed++;
+    }
     munit_assert_int(set_int_contains(&data_structures->int_set, values[i]), ==, should_contain);
+    const int count = set_int_count(&data_structures->int_set);
     set_int_remove(&data_structures->int_set, values[i]);
+    munit_assert_int(count - should_contain, ==, set_int_count(&data_structures->int_set));
   }
-  munit_assert_uint32(set_int_count(&data_structures->int_set), ==, TDS_COUNTOF(values) - 100);
+  munit_assert_uint32(set_int_count(&data_structures->int_set), ==, total - removed);
 
   return MUNIT_OK;
 }
