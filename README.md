@@ -106,8 +106,6 @@ Do a standard CMake build to build the tests.
 For learning purposes, sharing the data structures across my projects and having full control over them.
 
 ## Roadmap
-- Hashmap
-- Set
 - Bitset
 - Pool
 - Dynamic AABB tree
