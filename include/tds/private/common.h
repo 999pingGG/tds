@@ -1,7 +1,6 @@
 #pragma once
 #ifndef _TDS_PRIVATE_COMMON_H_
 #define _TDS_PRIVATE_COMMON_H_
-#include "rapidhash.h"
 
 #define TDS_JOIN2(a, b) TDS_JOIN2_IMPL(a, b)
 #define TDS_JOIN2_IMPL(a, b) a##b
@@ -21,7 +20,7 @@
 #define TDS_JOIN7(a, b, c, d, e, f, g) TDS_JOIN7_IMPL(a, b, c, d, e, f, g)
 #define TDS_JOIN7_IMPL(a, b, c, d, e, f, g) a##b##c##d##e##f##g
 
-#define TDS_DEFAULT_TYPE_W_KEY(data_structure_name) TDS_JOIN4(TDS_PREFIX, data_structure_name, _, TDS_KEY_T)
+#define TDS_DEFAULT_TYPE_W_VALUE(data_structure_name) TDS_JOIN4(TDS_PREFIX, data_structure_name, _, TDS_VALUE_T)
 #define TDS_DEFAULT_TYPE_W_KEY_VALUE(data_structure_name) TDS_JOIN6(\
   TDS_PREFIX,\
   data_structure_name,\

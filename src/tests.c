@@ -3,17 +3,17 @@
 
 #include <munit.h>
 
-#define TDS_KEY_T uint8_t
+#define TDS_VALUE_T uint8_t
 #include <tds/vector.h>
 
 #define TDS_SIZE_T int8_t
-#define TDS_KEY_T uint16_t
+#define TDS_VALUE_T uint16_t
 #include <tds/vector.h>
 
 #include <tds/vector.h>
 
 #define TDS_TYPE vector_u64
-#define TDS_KEY_T uint64_t
+#define TDS_VALUE_T uint64_t
 #include <tds/vector.h>
 
 #define TDS_SIZE_T uint8_t

@@ -2,7 +2,7 @@
 #include "private/begin.inc"
 
 #ifndef TDS_TYPE
-#define TDS_TYPE TDS_DEFAULT_TYPE_W_KEY(set)
+#define TDS_TYPE TDS_DEFAULT_TYPE_W_VALUE(set)
 #endif
 
 #define TDS_ENTRY_T TDS_JOIN2(TDS_TYPE, _entry)
@@ -21,16 +21,16 @@ typedef struct TDS_TYPE {
   TDS_SIZE_T capacity; // Always a prime number.
 } TDS_TYPE;
 
-int TDS_FUNCTION(contains)(const TDS_TYPE* set, TDS_KEY_T value);
+int TDS_FUNCTION(contains)(const TDS_TYPE* set, TDS_VALUE_T value);
 void TDS_FUNCTION(add)(TDS_TYPE* set, TDS_VALUE_T value);
-void TDS_FUNCTION(remove)(TDS_TYPE* set, TDS_KEY_T value);
+void TDS_FUNCTION(remove)(TDS_TYPE* set, TDS_VALUE_T value);
 TDS_SIZE_T TDS_FUNCTION(count)(const TDS_TYPE* set);
 void TDS_FUNCTION(clear)(TDS_TYPE* set);
 void TDS_FUNCTION(fini)(TDS_TYPE* set);
 #endif
 
 #ifdef TDS_IMPLEMENT
-int TDS_FUNCTION(contains)(const TDS_TYPE* set, const TDS_KEY_T value) {
+int TDS_FUNCTION(contains)(const TDS_TYPE* set, const TDS_VALUE_T value) {
   if (!set->buckets) {
     return 0;
   }
@@ -42,12 +42,12 @@ int TDS_FUNCTION(contains)(const TDS_TYPE* set, const TDS_KEY_T value) {
     TDS_ENTRY_T* cur = set->buckets + index;
 
     if (!cur->occupied) {
-      // Key not found.
+      // Value not found.
       return 0;
     }
 
     if (cur->hash == hash && cur->value == value) {
-      // Key found.
+      // Value found.
       return 1;
     }
 
@@ -169,7 +169,7 @@ void TDS_FUNCTION(add)(TDS_TYPE* set, const TDS_VALUE_T value) {
   }
 }
 
-void TDS_FUNCTION(remove)(TDS_TYPE* set, const TDS_KEY_T value) {
+void TDS_FUNCTION(remove)(TDS_TYPE* set, const TDS_VALUE_T value) {
   if (!set->buckets) {
     return;
   }
@@ -185,7 +185,10 @@ void TDS_FUNCTION(remove)(TDS_TYPE* set, const TDS_KEY_T value) {
     }
 
     if (cur->hash == hash && cur->value == value) {
-      // Value found, remove it by marking as unoccupied.
+      // Value found, delete it (if applicable) and remove it by marking as unoccupied.
+#ifdef TDS_VALUE_FINI
+      TDS_VALUE_FINI((cur->value));
+#endif
       cur->occupied = 0;
       set->count--;
 
@@ -224,6 +227,12 @@ TDS_SIZE_T TDS_FUNCTION(count)(const TDS_TYPE* set) {
 }
 
 void TDS_FUNCTION(clear)(TDS_TYPE* set) {
+#if defined(TDS_VALUE_FINI)
+  TDS_JOIN2(TDS_TYPE, _iter_t) it = TDS_FUNCTION(iter)(map);
+  while (TDS_FUNCTION(next)(&it)) {
+    TDS_VALUE_FINI((it.value));
+  }
+#endif
   if (set->buckets) {
     TDS_MEMSET(set->buckets, 0, sizeof(TDS_ENTRY_T) * set->capacity);
   }
@@ -231,6 +240,12 @@ void TDS_FUNCTION(clear)(TDS_TYPE* set) {
 }
 
 void TDS_FUNCTION(fini)(TDS_TYPE* set) {
+#if defined(TDS_VALUE_FINI)
+  TDS_JOIN2(TDS_TYPE, _iter_t) it = TDS_FUNCTION(iter)(map);
+  while (TDS_FUNCTION(next)(&it)) {
+    TDS_VALUE_FINI((it.value));
+  }
+#endif
   TDS_FREE(set->buckets);
   *set = (TDS_TYPE){ 0 };
 }

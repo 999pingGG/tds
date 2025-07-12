@@ -15,3 +15,8 @@
 #include <stdint.h>
 #define TDS_SIZE_T uint32_t
 #endif
+
+#ifndef TDS_HASH_KEY
+#include "rapidhash.h"
+#define TDS_HASH_KEY(key) (rapidhash(&key, sizeof(key)))
+#endif

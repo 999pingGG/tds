@@ -33,26 +33,29 @@ The following data structures are available:
 
 The following macros need to be defined just once:
 
-| Macro                  | Description                                                 | Default                                        |
-|------------------------|-------------------------------------------------------------|------------------------------------------------|
-| `TDS_PREFIX`           | The data structure types are prefixed with this by default. | Empty.                                         |
-| `TDS_CALLOC`           | The `calloc` standard function.                             | `calloc`                                       |
-| `TDS_REALLOC`          | The `realloc` standard function.                            | `realloc`                                      |
-| `TDS_FREE`             | The `free` standard function.                               | `free`                                         |
-| `TDS_MEMSET`           | The `memset` standard function.                             | `memset`                                       |
-| `TDS_MEMMOVE`          | The `memmove` standard function.                            | `memmove`                                      |
-| `TDS_ASSERT`           | The `assert` standard function.                             | `assert` in debug mode, `((void)0)` otherwise. |
-| `TDS_INITIAL_CAPACITY` | The initial capacity assigned to data structures.           | `4`                                            |
+| Macro                  | Description                                                      | Default                                        |
+|------------------------|------------------------------------------------------------------|------------------------------------------------|
+| `TDS_PREFIX`           | The data structure types are prefixed with this by default.      | Empty.                                         |
+| `TDS_CALLOC`           | The `calloc` standard function.                                  | `calloc`                                       |
+| `TDS_REALLOC`          | The `realloc` standard function.                                 | `realloc`                                      |
+| `TDS_FREE`             | The `free` standard function.                                    | `free`                                         |
+| `TDS_MEMSET`           | The `memset` standard function.                                  | `memset`                                       |
+| `TDS_MEMMOVE`          | The `memmove` standard function.                                 | `memmove`                                      |
+| `TDS_ASSERT`           | The `assert` standard function.                                  | `assert` in debug mode, `((void)0)` otherwise. |
+| `TDS_INITIAL_CAPACITY` | The initial capacity assigned to data structures.                | `4`                                            |
+| `TDS_HASH_KEY`         | The hashing method used for container keys, where applicable.    | `rapidhash(&key, sizeof(key))`                 |
+| `TDS_KEY_FINI`         | What to do with the key whenever it's removed from the container | Empty.                                         |
+| `TDS_VALUE_FINI`       | What to do with the key whenever it's removed from the container | Empty.                                         |
 
 The following macros need to be defined before implementing a data structure:
 
-| Macro                             | Description                                                                                                      | Default                                                                                                                                                                                               |
-|-----------------------------------|------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `TDS_DECLARE` and `TDS_IMPLEMENT` | Insert only the declarations and implementations, respectively.                                                  | Both are automatically defined if both are left out.                                                                                                                                                  |
-| `TDS_TYPE`                        | The name of the container's type.                                                                                | `{TDS_PREFIX}{data structure name}_{TDS_KEY_T}` for containers that don't use key-value pairs, `{TDS_PREFIX}{data structure name}_{TDS_KEY_T}_{TDS_VALUE_T}` for containers that use key-value pairs. | 
-| `TDS_KEY_T`                       | The type that will be used for keys in containers, or for elements in containers that don't use key-value pairs. | `int`                                                                                                                                                                                                 |
-| `TDS_VALUE_T`                     | The type that will be used for values in containers.                                                             | `int`                                                                                                                                                                                                 |
-| `TDS_SIZE_T`                      | The type that will be used for sizes, for example, `count`, `capacity`, etc.                                     | `uint32_t`                                                                                                                                                                                            |
+| Macro                             | Description                                                                                                        | Default                                                                                                                                                                                                 |
+|-----------------------------------|--------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `TDS_DECLARE` and `TDS_IMPLEMENT` | Insert only the declarations and implementations, respectively.                                                    | Both are automatically defined if both are left out.                                                                                                                                                    |
+| `TDS_TYPE`                        | The name of the container's type.                                                                                  | `{TDS_PREFIX}{data structure name}_{TDS_VALUE_T}` for containers that don't use key-value pairs, `{TDS_PREFIX}{data structure name}_{TDS_KEY_T}_{TDS_VALUE_T}` for containers that use key-value pairs. | 
+| `TDS_KEY_T`                       | The type that will be used for keys in containers                                                                  | `int`                                                                                                                                                                                                   |
+| `TDS_VALUE_T`                     | The type that will be used for values in containers, or for elements in containers that don't use key-value pairs. | `int`                                                                                                                                                                                                   |
+| `TDS_SIZE_T`                      | The type that will be used for sizes, for example, `count`, `capacity`, etc.                                       | `uint32_t`                                                                                                                                                                                              |
 
 ## Examples
 ```c
@@ -87,13 +90,13 @@ int main(int argc, char** argv) {
   return 0;
 }
 
-#define TDS_KEY_T short
+#define TDS_VALUE_T short
 #include <tds/vector.h>
 
 // Now the type `vec_short` is available along with its methods.
 
 #define TDS_TYPE my_vector
-#define TDS_KEY_T char
+#define TDS_VALUE_T char
 #include <tds/vector.h>
 
 // Now there's a `my_vector` type holding an array of chars.
@@ -103,9 +106,11 @@ int main(int argc, char** argv) {
 Do a standard CMake build to build the tests.
 
 ## Motivation
-For learning purposes, sharing the data structures across my projects and having full control over them.
+For learning purposes, sharing the data structures across my projects, having full control over them and practicing
+profiling and optimization.
 
 ## Roadmap
 - Bitset
 - Pool
 - Dynamic AABB tree
+- Sparse set

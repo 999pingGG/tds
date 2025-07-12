@@ -22,8 +22,17 @@ typedef struct TDS_TYPE {
   TDS_SIZE_T capacity; // Always a prime number.
 } TDS_TYPE;
 
+typedef struct TDS_JOIN2(TDS_TYPE, _iter_t) {
+  const TDS_TYPE* map;
+  TDS_SIZE_T _index;
+  TDS_KEY_T key;
+  const TDS_VALUE_T* value;
+} TDS_JOIN2(TDS_TYPE, _iter_t);
+
 TDS_VALUE_T* TDS_FUNCTION(get)(const TDS_TYPE* map, TDS_KEY_T key);
 void TDS_FUNCTION(set)(TDS_TYPE* map, TDS_KEY_T key, TDS_VALUE_T value);
+TDS_JOIN2(TDS_TYPE, _iter_t) TDS_FUNCTION(iter)(const TDS_TYPE* map);
+char TDS_FUNCTION(next)(TDS_JOIN2(TDS_TYPE, _iter_t)* iter);
 void TDS_FUNCTION(remove)(TDS_TYPE* map, TDS_KEY_T key);
 TDS_SIZE_T TDS_FUNCTION(count)(const TDS_TYPE* map);
 void TDS_FUNCTION(clear)(TDS_TYPE* map);
@@ -36,7 +45,7 @@ TDS_VALUE_T* TDS_FUNCTION(get)(const TDS_TYPE* map, const TDS_KEY_T key) {
     return NULL;
   }
 
-  const uint64_t hash = rapidhash(&key, sizeof(key));
+  const uint64_t hash = TDS_HASH_KEY(key);
   TDS_SIZE_T index = hash % map->capacity;
   // The "for" instead of a "while" loop is just to guard against infinite loops.
   for (TDS_SIZE_T i = 0; i < map->capacity; i++) {
@@ -47,7 +56,11 @@ TDS_VALUE_T* TDS_FUNCTION(get)(const TDS_TYPE* map, const TDS_KEY_T key) {
       return NULL;
     }
 
+#ifdef TDS_KEY_EQUALS
+    if (cur->hash == hash && TDS_KEY_EQUALS(cur->key, key)) {
+#else
     if (cur->hash == hash && cur->key == key) {
+#endif
       // Key found.
       return &cur->value;
     }
@@ -136,7 +149,7 @@ void TDS_FUNCTION(set)(TDS_TYPE* map, const TDS_KEY_T key, const TDS_VALUE_T val
 
   // Do the insertion.
   TDS_ENTRY_T new_entry = {
-    .hash = rapidhash(&key, sizeof(key)),
+    .hash = TDS_HASH_KEY(key),
     .probe_sequence_length = 0,
     .key = key,
     .value = value,
@@ -153,7 +166,11 @@ void TDS_FUNCTION(set)(TDS_TYPE* map, const TDS_KEY_T key, const TDS_VALUE_T val
       return;
     }
 
+#ifdef TDS_KEY_EQUALS
+    if (cur->hash == new_entry.hash && TDS_KEY_EQUALS(cur->key, key)) {
+#else
     if (cur->hash == new_entry.hash && cur->key == key) {
+#endif
       // Key matches, update the value.
       cur->value = value;
       return;
@@ -172,12 +189,32 @@ void TDS_FUNCTION(set)(TDS_TYPE* map, const TDS_KEY_T key, const TDS_VALUE_T val
   }
 }
 
+TDS_JOIN2(TDS_TYPE, _iter_t) TDS_FUNCTION(iter)(const TDS_TYPE* map) {
+  return (TDS_JOIN2(TDS_TYPE, _iter_t)) {
+    .map = map,
+    ._index = 0,
+  };
+}
+
+char TDS_FUNCTION(next)(TDS_JOIN2(TDS_TYPE, _iter_t)* iter) {
+  while (iter->_index < iter->map->capacity) {
+    const TDS_ENTRY_T* entry = iter->map->buckets + iter->_index++;
+    if (entry->occupied) {
+      iter->key = entry->key;
+      iter->value = &entry->value;
+      return 1;
+    }
+  }
+
+  return 0;
+}
+
 void TDS_FUNCTION(remove)(TDS_TYPE* map, const TDS_KEY_T key) {
   if (!map->buckets) {
     return;
   }
 
-  const uint64_t hash = rapidhash(&key, sizeof(key));
+  const uint64_t hash = TDS_HASH_KEY(key);
   TDS_SIZE_T index = hash % map->capacity;
   for (TDS_SIZE_T i = 0; i < map->capacity; i++) {
     TDS_ENTRY_T* cur = map->buckets + index;
@@ -187,8 +224,18 @@ void TDS_FUNCTION(remove)(TDS_TYPE* map, const TDS_KEY_T key) {
       return;
     }
 
+#ifdef TDS_KEY_EQUALS
+    if (cur->hash == hash && TDS_KEY_EQUALS(cur->key, key)) {
+#else
     if (cur->hash == hash && cur->key == key) {
-      // Key found, remove it by marking as unoccupied.
+#endif
+      // Key found, delete it (if applicable) and remove it by marking as unoccupied.
+#ifdef TDS_KEY_FINI
+      TDS_KEY_FINI((cur->key));
+#endif
+#ifdef TDS_VALUE_FINI
+      TDS_VALUE_FINI((cur->value));
+#endif
       cur->occupied = 0;
       map->count--;
 
@@ -227,6 +274,17 @@ TDS_SIZE_T TDS_FUNCTION(count)(const TDS_TYPE* map) {
 }
 
 void TDS_FUNCTION(clear)(TDS_TYPE* map) {
+#if defined(TDS_VALUE_FINI) || defined(TDS_KEY_FINI)
+  TDS_JOIN2(TDS_TYPE, _iter_t) it = TDS_FUNCTION(iter)(map);
+  while (TDS_FUNCTION(next)(&it)) {
+#ifdef TDS_KEY_FINI
+    TDS_KEY_FINI((it.key));
+#endif
+#ifdef TDS_VALUE_FINI
+    TDS_VALUE_FINI((it.value));
+#endif
+  }
+#endif
   if (map->buckets) {
     TDS_MEMSET(map->buckets, 0, sizeof(TDS_ENTRY_T) * map->capacity);
   }
@@ -234,6 +292,17 @@ void TDS_FUNCTION(clear)(TDS_TYPE* map) {
 }
 
 void TDS_FUNCTION(fini)(TDS_TYPE* map) {
+#if defined(TDS_VALUE_FINI) || defined(TDS_KEY_FINI)
+  TDS_JOIN2(TDS_TYPE, _iter_t) it = TDS_FUNCTION(iter)(map);
+  while (TDS_FUNCTION(next)(&it)) {
+#ifdef TDS_KEY_FINI
+    TDS_KEY_FINI((it.key));
+#endif
+#ifdef TDS_VALUE_FINI
+    TDS_VALUE_FINI((it.value));
+#endif
+  }
+#endif
   TDS_FREE(map->buckets);
   *map = (TDS_TYPE){ 0 };
 }
