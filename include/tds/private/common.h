@@ -22,17 +22,16 @@
 
 #define TDS_DEFAULT_TYPE_W_VALUE(data_structure_name) TDS_JOIN4(TDS_PREFIX, data_structure_name, _, TDS_VALUE_T)
 #define TDS_DEFAULT_TYPE_W_KEY_VALUE(data_structure_name) TDS_JOIN6(\
-  TDS_PREFIX,\
-  data_structure_name,\
-  _,\
-  TDS_KEY_T,\
-  _,\
-  TDS_VALUE_T\
-)
+    TDS_PREFIX,\
+    data_structure_name,\
+    _,\
+    TDS_KEY_T,\
+    _,\
+    TDS_VALUE_T)
 
 #define TDS_IS_SIGNED(T) ((T)-1 < 1)
 #define TDS_MAX_VALUE(T) (TDS_IS_SIGNED(T) ? (T)((1ull << ((sizeof(T) << 3) - 1)) - 1) : (T)-1)
-#define TDS_COUNTOF(array) (sizeof(array) / sizeof(array[0]))
+#define TDS_COUNTOF(array) (sizeof(array) / sizeof((array)[0]))
 
 #ifndef TDS_PREFIX
 #define TDS_PREFIX
