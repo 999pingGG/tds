@@ -17,6 +17,6 @@
 #endif
 
 #ifndef TDS_HASH_KEY
-#include "rapidhash.h"
+#include <rapidhash.h>
 #define TDS_HASH_KEY(key) (rapidhash(&key, sizeof(key)))
 #endif

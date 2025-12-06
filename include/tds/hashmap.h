@@ -26,7 +26,7 @@ typedef struct TDS_JOIN2(TDS_TYPE, _iter_t) {
   const TDS_TYPE* map;
   TDS_SIZE_T _index;
   TDS_KEY_T key;
-  const TDS_VALUE_T* value;
+  TDS_VALUE_T* value;
 } TDS_JOIN2(TDS_TYPE, _iter_t);
 
 TDS_VALUE_T* TDS_FUNCTION(get)(const TDS_TYPE* map, TDS_KEY_T key);
@@ -40,7 +40,7 @@ void TDS_FUNCTION(fini)(TDS_TYPE* map);
 #endif
 
 #ifdef TDS_IMPLEMENT
-TDS_VALUE_T* TDS_FUNCTION(get)(const TDS_TYPE* map, const TDS_KEY_T key) {
+TDS_VALUE_T* TDS_FUNCTION(get)(const TDS_TYPE* map, TDS_KEY_T key) {
   if (!map->buckets) {
     return NULL;
   }
@@ -72,7 +72,7 @@ TDS_VALUE_T* TDS_FUNCTION(get)(const TDS_TYPE* map, const TDS_KEY_T key) {
   return NULL;
 }
 
-void TDS_FUNCTION(set)(TDS_TYPE* map, const TDS_KEY_T key, const TDS_VALUE_T value) {
+void TDS_FUNCTION(set)(TDS_TYPE* map, TDS_KEY_T key, TDS_VALUE_T value) {
   if (!map->buckets) {
     // Yeah, we ignore TDS_INITIAL_CAPACITY here because we need the capacity to be a prime number.
     map->capacity = 11;
@@ -198,7 +198,7 @@ TDS_JOIN2(TDS_TYPE, _iter_t) TDS_FUNCTION(iter)(const TDS_TYPE* map) {
 
 char TDS_FUNCTION(next)(TDS_JOIN2(TDS_TYPE, _iter_t)* iter) {
   while (iter->_index < iter->map->capacity) {
-    const TDS_ENTRY_T* entry = iter->map->buckets + iter->_index++;
+    TDS_ENTRY_T* entry = iter->map->buckets + iter->_index++;
     if (entry->occupied) {
       iter->key = entry->key;
       iter->value = &entry->value;
@@ -209,7 +209,7 @@ char TDS_FUNCTION(next)(TDS_JOIN2(TDS_TYPE, _iter_t)* iter) {
   return 0;
 }
 
-void TDS_FUNCTION(remove)(TDS_TYPE* map, const TDS_KEY_T key) {
+void TDS_FUNCTION(remove)(TDS_TYPE* map, TDS_KEY_T key) {
   if (!map->buckets) {
     return;
   }
@@ -296,10 +296,10 @@ void TDS_FUNCTION(fini)(TDS_TYPE* map) {
   TDS_JOIN2(TDS_TYPE, _iter_t) it = TDS_FUNCTION(iter)(map);
   while (TDS_FUNCTION(next)(&it)) {
 #ifdef TDS_KEY_FINI
-    TDS_KEY_FINI((it.key));
+    TDS_KEY_FINI(it.key);
 #endif
 #ifdef TDS_VALUE_FINI
-    TDS_VALUE_FINI((it.value));
+    TDS_VALUE_FINI(*it.value);
 #endif
   }
 #endif
