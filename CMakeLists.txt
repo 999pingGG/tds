@@ -16,6 +16,7 @@ add_executable(tests
   include/tds/vector.h
   libs/munit/munit.c
   libs/munit/munit.h
+  libs/rapidhash/rapidhash.h
 )
 add_test(NAME tests COMMAND tests)
 
@@ -26,4 +27,4 @@ else()
   target_compile_definitions(tests PRIVATE MUNIT_NO_FORK)
 endif()
 
-target_include_directories(tests PRIVATE include libs/munit)
+target_include_directories(tests PRIVATE include libs/munit libs/rapidhash)

@@ -9,9 +9,10 @@ functions. The tests are trivial to compile, but I'm using CMake here.
 
 ## Installation
 Make the `include/tds` directory available inside any include directory you want. You can omit any files corresponding
-to data structures you don't need, but the `private` directory is required for all of them. Optionally define the
-`TDS_REALLOC` and `TDS_FREE` macros to expand to functions whose signature match standard `realloc` and `free` before
-using any of the data structures. There's also `TDS_ASSERT` which you can define.
+to data structures you don't need, but the `private` directory is required for all of them. Make
+[rapidhash.h](https://github.com/Nicoshev/rapidhash) available for inclusion in any way you prefer. Optionally define
+the `TDS_REALLOC` and `TDS_FREE` macros to expand to functions whose signature match standard `realloc` and `free`
+before using any of the data structures. There's also `TDS_ASSERT` which you can define.
 
 ## Usage
 `#include`'ing any of the data structure's header will insert its declarations and implementation of functions.  Every
