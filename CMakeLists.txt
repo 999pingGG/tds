@@ -11,6 +11,7 @@ add_executable(tests
     include/tds/private/common.h
     include/tds/private/begin.inc
     include/tds/private/end.inc
+    include/tds/dense-pool.h
     include/tds/hashmap.h
     include/tds/set.h
     include/tds/vector.h
