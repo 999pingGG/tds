@@ -1,3 +1,5 @@
+#undef TDS_TYPE
+#undef TDS_ENTRY_T
 #undef TDS_DECLARE
 #undef TDS_IMPLEMENT
 #undef TDS_KEY_T

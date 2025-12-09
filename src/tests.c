@@ -28,6 +28,9 @@
 
 #include <tds/hashmap.h>
 
+#define TDS_SIZE_T uint8_t
+#include <tds/dense-pool.h>
+
 #include <tds/set.h>
 
 #ifndef TESTS_NO_STATIC_ASSERT
@@ -60,6 +63,12 @@ static void* setup(const MunitParameter params[], void* user_data) {
     return calloc(1, sizeof(test_data_structures_t));
 }
 
+static void* setup_dense_pool(const MunitParameter params[], void* user_data) {
+    (void)params;
+    (void)user_data;
+    return calloc(1, sizeof(dense_pool_int));
+}
+
 static void tear_down(void* fixture) {
     test_data_structures_t* data_structures = fixture;
 
@@ -71,6 +80,11 @@ static void tear_down(void* fixture) {
     hashmap_u16_to_u8_fini(&data_structures->u8_hashmap);
     hashmap_int_int_fini(&data_structures->int_hashmap);
     set_int_fini(&data_structures->int_set);
+    free(fixture);
+}
+
+static void tear_down_dense_pool(void* fixture) {
+    dense_pool_int_fini(fixture);
     free(fixture);
 }
 
@@ -104,6 +118,41 @@ static MunitResult append(const MunitParameter* params, void* fixture) {
         munit_assert_int(vector_u64_count(&data_structures->uint64_vec), ==, i + 1);
         munit_assert_int(set_int_count(&data_structures->int_set), == , i + 1);
     }
+
+    return MUNIT_OK;
+}
+
+static MunitResult append_and_remove_dense_pool(const MunitParameter* params, void* fixture) {
+    (void)params;
+    dense_pool_int* pool = fixture;
+
+    int values[UINT8_MAX];
+    for (uint8_t i = 0; i < UINT8_MAX; i++) {
+        values[i] = i * 100;
+        const uint8_t id = dense_pool_int_append(pool, values[i]);
+        munit_assert_uint8(id, ==, i);
+        munit_assert_uint8(dense_pool_int_count(pool), ==, i + 1);
+        munit_assert_int(dense_pool_int_get(pool, id), ==, values[i]);
+    }
+
+    munit_assert_uint8(dense_pool_int_remove(pool, 254), ==, 254);
+    munit_assert_uint8(dense_pool_int_append(pool, 254), ==, 254);
+
+    uint8_t removed[20];
+    for (int i = 0, next = 0; i < TDS_COUNTOF(removed); i++, next += munit_rand_int_range(1, 10)) {
+        assert(i < UINT8_MAX && next < UINT8_MAX);
+        removed[i] = (uint8_t)next;
+        munit_assert_uint8(dense_pool_int_remove(pool, removed[i]), ==, removed[i]);
+        munit_assert_uint8(dense_pool_int_count(pool), ==, (uint8_t)(UINT8_MAX - i - 1));
+    }
+
+    for (int i = TDS_COUNTOF(removed) - 1; i >= 0; i--) {
+        munit_assert_uint8(dense_pool_int_append(pool, 0), ==, removed[i]);
+    }
+
+    const uint8_t expected_id = pool->count - 1;
+    dense_pool_int_remove(pool, expected_id);
+    munit_assert_uint8(dense_pool_int_append(pool, 0), ==, expected_id);
 
     return MUNIT_OK;
 }
@@ -299,6 +348,13 @@ static MunitResult count(const MunitParameter* params, void* fixture) {
     .tear_down = tear_down,\
 }
 
+#define TDS_DENSE_POOL_TEST(fun) {\
+    .name = "/"#fun,\
+    .test = (fun),\
+    .setup = setup_dense_pool,\
+    .tear_down = tear_down_dense_pool,\
+}
+
 int main(const int argc, char* const* argv) {
     MunitTest containers[] = {
         TDS_TEST(append),
@@ -308,10 +364,19 @@ int main(const int argc, char* const* argv) {
         { 0 },
     };
 
+    MunitTest dense_pool[] = {
+        TDS_DENSE_POOL_TEST(append_and_remove_dense_pool),
+        { 0 },
+    };
+
     MunitSuite suites[] = {
         {
             .prefix = "/containers",
             .tests = containers,
+        },
+        {
+            .prefix = "/dense-pool",
+            .tests = dense_pool,
         },
         { 0 },
     };

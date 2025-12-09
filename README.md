@@ -1,6 +1,6 @@
 # Tiny Data Structures (WIP)
 A header-only collection of simple, type-safe data structures and containers for C. So far compiles absolutely
-warning-free.
+warning-free. Documentation is still lacking.
 
 ## Requirements
 A C89 compiler. C11 is only required for the µnit library and `static_assert` in the tests, but you can disable it by
@@ -26,11 +26,12 @@ future-proof.
   
 The following data structures are available:
 
-| Data structure | Description                                                                                      | Default name | Available functions                                          |
-|----------------|--------------------------------------------------------------------------------------------------|--------------|--------------------------------------------------------------|
-| Vector         | A dynamic array.                                                                                 | `vec`        | `append`, `remove`, `get`, `count`, `first`, `clear`, `fini` |
-| Hashmap        | An unordered key-value container. Uses Robin Hood hashing.                                       | `hashmap`    | `get`, `set`, `remove`, `count`, `clear`, `fini`             |
-| Set            | An unordered container of unique values, like a hashmap without values. Uses Robin Hood hashing. | `set`        | `contains`, `add`, `remove`, `count`, `clear`, `fini`        |
+| Data structure | Description                                                                                                                    | Default name | Available functions                                          |
+|----------------|--------------------------------------------------------------------------------------------------------------------------------|--------------|--------------------------------------------------------------|
+| Vector         | A dynamic array.                                                                                                               | `vec`        | `append`, `remove`, `get`, `count`, `first`, `clear`, `fini` |
+| Hashmap        | An unordered key-value container. Uses Robin Hood hashing.                                                                     | `hashmap`    | `get`, `set`, `remove`, `count`, `clear`, `fini`             |
+| Set            | An unordered container of unique values, like a hashmap without values. Uses Robin Hood hashing.                               | `set`        | `contains`, `add`, `remove`, `count`, `clear`, `fini`        |
+| Dense pool     | An efficient way to allocate and deallocate elements in any order while having stable IDs and a contiguous array at all times. | `dense_pool` | `append`, `remove`, `get`, `count`, `first`, `clear`, `fini` |
 
 The following macros need to be defined just once:
 
@@ -112,6 +113,5 @@ profiling and optimization.
 
 ## Roadmap
 - Bitset
-- Pool
 - Dynamic AABB tree
-- Sparse set
+- Better documentation, with examples.

@@ -309,6 +309,4 @@ void TDS_FUNCTION(fini)(TDS_TYPE* map) {
 }
 #endif
 
-#undef TDS_TYPE
-#undef TDS_ENTRY_T
 #include "private/end.inc"

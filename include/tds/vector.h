@@ -23,6 +23,8 @@ void TDS_FUNCTION(fini)(TDS_TYPE* vec);
 #ifdef TDS_IMPLEMENT
 void TDS_FUNCTION(append)(TDS_TYPE* vec, const TDS_VALUE_T value) {
     TDS_ASSERT(vec->count <= vec->capacity);
+    // Guard against overflow.
+    TDS_ASSERT(vec->count < TDS_MAX_VALUE(TDS_SIZE_T));
 
     if (vec->count == vec->capacity) {
         TDS_SIZE_T new_capacity = vec->capacity ? vec->capacity * 2 : TDS_INITIAL_CAPACITY;
@@ -35,17 +37,14 @@ void TDS_FUNCTION(append)(TDS_TYPE* vec, const TDS_VALUE_T value) {
     }
 
     vec->array[vec->count] = value;
-    const TDS_SIZE_T new_count = vec->count + 1;
-    // Guard against overflow.
-    TDS_ASSERT(new_count > vec->count);
-    vec->count = new_count;
+    vec->count++;
 }
 
 void TDS_FUNCTION(remove)(TDS_TYPE* vec, const TDS_SIZE_T index) {
     TDS_ASSERT(index < vec->count);
 
 #ifdef TDS_VALUE_FINI
-    TDS_VALUE_FINI((&vec->array[index]));
+    TDS_VALUE_FINI(vec->array[index]);
 #endif
 
     if (index < vec->count - 1) {
@@ -71,7 +70,7 @@ TDS_VALUE_T* TDS_FUNCTION(first)(const TDS_TYPE* vec) {
 void TDS_FUNCTION(clear)(TDS_TYPE* vec) {
 #ifdef TDS_VALUE_FINI
     for (TDS_SIZE_T i = 0; i < vec->count; i++) {
-        TDS_VALUE_FINI((&vec->array[i]));
+        TDS_VALUE_FINI(vec->array[i]);
     }
 #endif
     vec->count = 0;
@@ -80,7 +79,7 @@ void TDS_FUNCTION(clear)(TDS_TYPE* vec) {
 void TDS_FUNCTION(fini)(TDS_TYPE* vec) {
 #ifdef TDS_VALUE_FINI
     for (TDS_SIZE_T i = 0; i < vec->count; i++) {
-        TDS_VALUE_FINI((&vec->array[i]));
+        TDS_VALUE_FINI(vec->array[i]);
     }
 #endif
     TDS_FREE(vec->array);
@@ -88,5 +87,4 @@ void TDS_FUNCTION(fini)(TDS_TYPE* vec) {
 }
 #endif
 
-#undef TDS_TYPE
 #include "private/end.inc"
