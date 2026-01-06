@@ -157,6 +157,35 @@ static MunitResult append_and_remove_dense_pool(const MunitParameter* params, vo
     return MUNIT_OK;
 }
 
+static MunitResult dense_pool_id_reuse(const MunitParameter* params, void* fixture) {
+    (void)params;
+    dense_pool_int* pool = fixture;
+
+    dense_pool_int_append(pool, 44);
+    dense_pool_int_append(pool, 55);
+
+    munit_assert_uint8(pool->dense[pool->sparse[0]], ==, 0);
+    munit_assert_uint8(pool->dense[pool->sparse[1]], ==, 1);
+
+    uint8_t id = dense_pool_int_remove(pool, 0);
+    munit_assert_uint8(id, ==, 0);
+    id = dense_pool_int_remove(pool, 1);
+    munit_assert_uint8(id, ==, 0);
+
+    id = dense_pool_int_append(pool, 44);
+    munit_assert_uint8(id, ==, 1);
+    id = dense_pool_int_append(pool, 55);
+    munit_assert_uint8(id, ==, 0);
+
+    munit_assert_uint8(pool->dense[pool->sparse[0]], ==, 0);
+    munit_assert_uint8(pool->dense[pool->sparse[1]], ==, 1);
+
+    dense_pool_int_remove(pool, 1);
+    dense_pool_int_remove(pool, 0);
+
+    return MUNIT_OK;
+}
+
 static MunitResult remove_test(const MunitParameter* params, void* fixture) {
     (void)params;
     test_data_structures_t* data_structures = fixture;
@@ -366,6 +395,7 @@ int main(const int argc, char* const* argv) {
 
     MunitTest dense_pool[] = {
         TDS_DENSE_POOL_TEST(append_and_remove_dense_pool),
+        TDS_DENSE_POOL_TEST(dense_pool_id_reuse),
         { 0 },
     };
 
