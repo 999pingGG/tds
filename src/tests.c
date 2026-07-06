@@ -139,7 +139,7 @@ static MunitResult append_and_remove_dense_pool(const MunitParameter* params, vo
     munit_assert_uint8(dense_pool_int_append(pool, 254), ==, 254);
 
     uint8_t removed[20];
-    for (int i = 0, next = 0; i < TDS_COUNTOF(removed); i++, next += munit_rand_int_range(1, 10)) {
+    for (unsigned i = 0, next = 0; i < TDS_COUNTOF(removed); i++, next += munit_rand_int_range(1, 10)) {
         assert(i < UINT8_MAX && next < UINT8_MAX);
         removed[i] = (uint8_t)next;
         munit_assert_uint8(dense_pool_int_remove(pool, removed[i]), ==, removed[i]);
