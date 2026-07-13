@@ -200,7 +200,8 @@ static MunitResult remove_test(const MunitParameter* params, void* fixture) {
         hashmap_uint8_t_uint64_t_set(&data_structures->uint64_hashmap, i, values[i]);
         hashmap_u16_to_u8_set(&data_structures->u8_hashmap, i, (uint8_t)values[i]);
         hashmap_int_int_set(&data_structures->int_hashmap, i, values[i]);
-        set_int_add(&data_structures->int_set, values[i]);
+        const int was_in_set = set_int_contains(&data_structures->int_set, values[i]);
+        munit_assert_int(set_int_add(&data_structures->int_set, values[i]), ==, !was_in_set);
     }
 
     vec_uint8_t_remove(&data_structures->uint8_vec, 0);
@@ -246,7 +247,9 @@ static MunitResult remove_test(const MunitParameter* params, void* fixture) {
         i >= 0 && j >= 0 && k >= 0;
         i -= munit_rand_int_range(0, 5), j -= munit_rand_int_range(0, 5), k -= munit_rand_int_range(0, 5)
     ) {
-        if (hashmap_uint8_t_uint64_t_get(&data_structures->uint64_hashmap, (uint8_t)i)) {
+        const int was_in_uint64_hashmap =
+            hashmap_uint8_t_uint64_t_get(&data_structures->uint64_hashmap, (uint8_t)i) != NULL;
+        if (was_in_uint64_hashmap) {
             counts[0]--;
         }
         if (hashmap_u16_to_u8_get(&data_structures->u8_hashmap, (uint16_t)i)) {
@@ -255,9 +258,13 @@ static MunitResult remove_test(const MunitParameter* params, void* fixture) {
         if (hashmap_int_int_get(&data_structures->int_hashmap, i)) {
             counts[2]--;
         }
-        hashmap_uint8_t_uint64_t_remove(&data_structures->uint64_hashmap, (uint8_t)i);
-        hashmap_uint8_t_uint64_t_remove(&data_structures->uint64_hashmap, (uint8_t)i);
-        hashmap_uint8_t_uint64_t_remove(&data_structures->uint64_hashmap, (uint8_t)i);
+        munit_assert_int(
+            hashmap_uint8_t_uint64_t_remove(&data_structures->uint64_hashmap, (uint8_t)i),
+            ==,
+            was_in_uint64_hashmap
+        );
+        munit_assert_false(hashmap_uint8_t_uint64_t_remove(&data_structures->uint64_hashmap, (uint8_t)i));
+        munit_assert_false(hashmap_uint8_t_uint64_t_remove(&data_structures->uint64_hashmap, (uint8_t)i));
         hashmap_u16_to_u8_remove(&data_structures->u8_hashmap, (uint16_t)i);
         hashmap_u16_to_u8_remove(&data_structures->u8_hashmap, (uint16_t)i);
         hashmap_int_int_remove(&data_structures->int_hashmap, i);
@@ -283,7 +290,8 @@ static MunitResult remove_test(const MunitParameter* params, void* fixture) {
         }
         munit_assert_int(set_int_contains(&data_structures->int_set, values[i]), ==, should_contain);
         const unsigned count = set_int_count(&data_structures->int_set);
-        set_int_remove(&data_structures->int_set, values[i]);
+        munit_assert_int(set_int_remove(&data_structures->int_set, values[i]), ==, should_contain);
+        munit_assert_false(set_int_remove(&data_structures->int_set, values[i]));
         munit_assert_int(count - should_contain, ==, set_int_count(&data_structures->int_set));
     }
     munit_assert_uint32(set_int_count(&data_structures->int_set), ==, total - removed);
@@ -306,9 +314,17 @@ static MunitResult get_set(const MunitParameter* params, void* fixture) {
         vec_int_append(&data_structures->int_vec, values[i]);
         vector_u64_append(&data_structures->uint64_vec, values[i]);
 
-        hashmap_uint8_t_uint64_t_set(&data_structures->uint64_hashmap, (uint8_t)i, values[i]);
+        munit_assert_true(hashmap_uint8_t_uint64_t_set(
+            &data_structures->uint64_hashmap,
+            (uint8_t)i,
+            values[i]
+        ));
         unsigned count = hashmap_uint8_t_uint64_t_count(&data_structures->uint64_hashmap);
-        hashmap_uint8_t_uint64_t_set(&data_structures->uint64_hashmap, (uint8_t)i, values[i]);
+        munit_assert_false(hashmap_uint8_t_uint64_t_set(
+            &data_structures->uint64_hashmap,
+            (uint8_t)i,
+            values[i]
+        ));
         munit_assert_int(count, ==, hashmap_uint8_t_uint64_t_count(&data_structures->uint64_hashmap));
 
         hashmap_u16_to_u8_set(&data_structures->u8_hashmap, (uint16_t)i, (uint8_t)values[i]);

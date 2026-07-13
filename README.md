@@ -75,10 +75,10 @@ Header: `#include <tds/hashmap.h>`
 |---|---|
 | `get` | Returns a pointer to the stored value for `key`, or `NULL` if the key is absent. |
 | `reserve` | Ensures enough backing capacity for at least `capacity` buckets before Robin Hood rehashing rules are applied. |
-| `set` | Inserts or replaces the value for `key`. |
+| `set` | Inserts or replaces the value for `key`. Returns nonzero if a new key was inserted, or zero if an existing key's value was replaced. |
 | `iter` | Creates an iterator for traversing occupied entries. |
 | `next` | Advances an iterator. Returns nonzero while an entry is available. |
-| `remove` | Removes `key` if present. |
+| `remove` | Removes `key` if present. Returns nonzero if an entry was removed, or zero if the key was absent. |
 | `count` | Returns the number of stored entries. |
 | `clear` | Removes all entries but keeps the bucket array allocated. |
 | `reclaim` | Shrinks the bucket array to the smallest prime capacity that satisfies the current load. |
@@ -97,8 +97,8 @@ Header: `#include <tds/set.h>`
 |---|---|
 | `contains` | Returns nonzero if the value is present. |
 | `reserve` | Ensures enough backing capacity for at least `capacity` buckets before rehashing is necessary. |
-| `add` | Inserts the value if it is not already present. |
-| `remove` | Removes the value if present. |
+| `add` | Inserts the value if it is not already present. Returns nonzero if the value was inserted, or zero if it was already present. |
+| `remove` | Removes the value if present. Returns nonzero if a value was removed, or zero if it was absent. |
 | `count` | Returns the number of stored values. |
 | `clear` | Removes all values but keeps the bucket array allocated. |
 | `reclaim` | Tries to shrink the backing storage as much as possible without loading the hash map over the limit. |
@@ -231,8 +231,9 @@ int main(void) {
     int_labels labels = { 0 };
 
     int_labels_reserve(&labels, 16);
-    int_labels_set(&labels, 1, "one");
-    int_labels_set(&labels, 2, "two");
+    assert(int_labels_set(&labels, 1, "one"));
+    assert(int_labels_set(&labels, 2, "two"));
+    assert(!int_labels_set(&labels, 2, "two updated"));
 
     const char** value = int_labels_get(&labels, 2);
     assert(value && *value);
@@ -289,11 +290,13 @@ int main(void) {
     set_int ids = { 0 };
     dense_pool_int pool = { 0 };
 
-    set_int_add(&ids, 7);
-    set_int_add(&ids, 7);
-    set_int_add(&ids, 42);
+    assert(set_int_add(&ids, 7));
+    assert(!set_int_add(&ids, 7));
+    assert(set_int_add(&ids, 42));
     assert(set_int_count(&ids) == 2);
     assert(set_int_contains(&ids, 42));
+    assert(set_int_remove(&ids, 42));
+    assert(!set_int_remove(&ids, 42));
 
     int a = dense_pool_int_append(&pool, 100);
     int b = dense_pool_int_append(&pool, 200);
