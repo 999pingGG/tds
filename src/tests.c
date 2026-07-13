@@ -3,6 +3,20 @@
 
 #include <munit.h>
 
+#define TDS_BIT_COUNT 1
+#include <tds/bitset.h>
+
+#define TDS_BIT_COUNT 64
+#include <tds/bitset.h>
+
+#define TDS_BIT_COUNT 65
+#include <tds/bitset.h>
+
+#define TDS_TYPE small_bitset
+#define TDS_BIT_COUNT 10
+#define TDS_WORD_T uint8_t
+#include <tds/bitset.h>
+
 #define TDS_VALUE_T uint8_t
 #include <tds/vector.h>
 
@@ -386,6 +400,61 @@ static MunitResult count(const MunitParameter* params, void* fixture) {
     return MUNIT_OK;
 }
 
+static MunitResult bitset(const MunitParameter* params, void* fixture) {
+    (void)params;
+    (void)fixture;
+
+    bitset_1_t one = { 0 };
+    munit_assert_false(bitset_1_t_any(&one));
+    munit_assert_true(bitset_1_t_none(&one));
+    munit_assert_false(bitset_1_t_get(&one, 0));
+    bitset_1_t_set_all(&one);
+    munit_assert_true(bitset_1_t_any(&one));
+    munit_assert_false(bitset_1_t_none(&one));
+    munit_assert_true(bitset_1_t_get(&one, 0));
+    bitset_1_t_clear(&one, 0);
+    munit_assert_false(bitset_1_t_any(&one));
+    munit_assert_true(bitset_1_t_none(&one));
+
+    bitset_64_t exact_word = { 0 };
+    bitset_64_t_set(&exact_word, 0);
+    bitset_64_t_set(&exact_word, 63);
+    munit_assert_true(bitset_64_t_get(&exact_word, 0));
+    munit_assert_true(bitset_64_t_get(&exact_word, 63));
+    bitset_64_t_clear_all(&exact_word);
+    munit_assert_false(bitset_64_t_any(&exact_word));
+    munit_assert_true(bitset_64_t_none(&exact_word));
+
+    bitset_65_t across_words = { 0 };
+    bitset_65_t_set(&across_words, 63);
+    bitset_65_t_set(&across_words, 64);
+    munit_assert_true(bitset_65_t_get(&across_words, 63));
+    munit_assert_true(bitset_65_t_get(&across_words, 64));
+    bitset_65_t_clear(&across_words, 63);
+    munit_assert_false(bitset_65_t_get(&across_words, 63));
+    munit_assert_true(bitset_65_t_any(&across_words));
+    munit_assert_false(bitset_65_t_none(&across_words));
+
+    bitset_65_t_set_all(&across_words);
+    for (uint32_t i = 0; i < 65; i++) {
+        munit_assert_true(bitset_65_t_get(&across_words, i));
+        bitset_65_t_clear(&across_words, i);
+    }
+    munit_assert_false(bitset_65_t_any(&across_words));
+    munit_assert_true(bitset_65_t_none(&across_words));
+
+    small_bitset small = { 0 };
+    small_bitset_set_all(&small);
+    for (uint32_t i = 0; i < 10; i++) {
+        munit_assert_true(small_bitset_get(&small, i));
+        small_bitset_clear(&small, i);
+    }
+    munit_assert_false(small_bitset_any(&small));
+    munit_assert_true(small_bitset_none(&small));
+
+    return MUNIT_OK;
+}
+
 #define TDS_TEST(fun) {\
     .name = "/"#fun,\
     .test = (fun),\
@@ -415,6 +484,14 @@ int main(const int argc, char* const* argv) {
         { 0 },
     };
 
+    MunitTest bitsets[] = {
+        {
+            .name = "/operations",
+            .test = bitset,
+        },
+        { 0 },
+    };
+
     MunitSuite suites[] = {
         {
             .prefix = "/containers",
@@ -423,6 +500,10 @@ int main(const int argc, char* const* argv) {
         {
             .prefix = "/dense-pool",
             .tests = dense_pool,
+        },
+        {
+            .prefix = "/bitset",
+            .tests = bitsets,
         },
         { 0 },
     };

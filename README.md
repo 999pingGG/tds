@@ -12,6 +12,7 @@ The library currently provides:
 - Hash maps
 - Sets
 - Dense pools
+- Fixed-size bitsets
 
 ## Requirements
 
@@ -31,8 +32,8 @@ Including one of the public headers generates declarations and implementations f
 
 Keep these rules in mind:
 
-- Zero-initialize every container before first use.
-- Call `*_fini` when you are done with a container.
+- Zero-initialize every container before first use, except bitset, which doesn't absolutely need it.
+- Call `*_fini` when you are done with a container, except bitset, which doesn't allocate and doesn't need or even have a finish function.
 - All values are shallow-copied.
 - Treat struct fields as internal implementation details and use the public functions instead.
 - If you include the same header multiple times, each inclusion should configure a different generated type.
@@ -47,6 +48,7 @@ By default, if neither `TDS_DECLARE` nor `TDS_IMPLEMENT` is defined, the header 
 | Hash map | `hashmap_<key-type>_<value-type>` | An unordered key-value container using Robin Hood hashing. |
 | Set | `set_<value-type>` | An unordered container of unique values using Robin Hood hashing. |
 | Dense pool | `dense_pool_<value-type>` | A dense array with stable sparse IDs and O(1) add/remove by ID. |
+| Bitset | `bitset_<bit-count>_t` | A fixed-size, inline array of individually addressable bits. |
 
 ## Public API
 
@@ -120,6 +122,25 @@ Header: `#include <tds/dense-pool.h>`
 | `reclaim` | Shrinks storage to the highest live sparse ID plus one and rebuilds the free-ID list. |
 | `fini` | Finalizes the pool and frees all storage. |
 
+### Bitset
+
+Header: `#include <tds/bitset.h>`
+
+Define `TDS_BIT_COUNT` before including the header. The generated bitset stores all words inline, requires no allocation, and can be initialized with `{ 0 }`.
+
+| Function | Description |
+|---|---|
+| `get` | Returns nonzero if the bit at `index` is set. |
+| `set` | Sets the bit at `index`. |
+| `clear` | Clears the bit at `index`. |
+| `set_all` | Sets every bit in the bitset. |
+| `clear_all` | Clears every bit in the bitset. |
+| `any` | Returns nonzero if at least one bit is set. |
+| `none` | Returns nonzero if no bits are set. |
+| `none` | Returns nonzero if all bits are unset. |
+
+Indices must be less than `TDS_BIT_COUNT`; invalid indices trigger `TDS_ASSERT` in debug builds and otherwise result in undefined behavior.
+
 ## Configuration Macros
 
 ### Global macros
@@ -153,12 +174,15 @@ Define these immediately before a specific header inclusion:
 | `TDS_KEY_EQUALS(a, b)` | Equality test for hash map keys. | `a == b` |
 | `TDS_KEY_FINI(x)` | Cleanup hook run when a hash map key is removed or finalized. | Empty |
 | `TDS_VALUE_FINI(x)` | Cleanup hook run when a stored value is removed or finalized. | Empty |
+| `TDS_BIT_COUNT` | Number of addressable bits in a bitset. Required by `bitset.h`. | No default |
+| `TDS_WORD_T` | Unsigned integer type used for bitset storage words. | `uint64_t` |
 
 Notes:
 
 - `TDS_HASH_KEY` and `TDS_KEY_EQUALS` apply to `hashmap.h`.
 - The current `set.h` implementation hashes and compares values directly and does not expose equivalent customization hooks yet.
 - `TDS_VALUE_FINI` applies to every container.
+- `TDS_BIT_COUNT` must be greater than zero, and `TDS_WORD_T` must be an unsigned integer type.
 
 ## Examples
 
@@ -313,6 +337,29 @@ int main(void) {
 }
 ```
 
+### Bitset
+
+```c
+#include <assert.h>
+
+#define TDS_BIT_COUNT 100
+#include <tds/bitset.h>
+
+int main(void) {
+    bitset_100_t flags = { 0 };
+
+    bitset_100_t_set(&flags, 7);
+    bitset_100_t_set(&flags, 99);
+    assert(bitset_100_t_get(&flags, 7));
+    assert(bitset_100_t_any(&flags));
+
+    bitset_100_t_clear(&flags, 7);
+    bitset_100_t_clear_all(&flags);
+    assert(bitset_100_t_none(&flags));
+    return 0;
+}
+```
+
 ## Testing
 
 Build and run the tests with a standard CMake workflow:
@@ -330,6 +377,4 @@ profiling and optimization.
 
 ## Roadmap
 
-- Bitset
 - Dynamic AABB tree
-- More examples and deeper API notes
