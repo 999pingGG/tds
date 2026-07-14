@@ -14,6 +14,7 @@ add_executable(tests
     include/tds/bitset.h
     include/tds/dense-pool.h
     include/tds/hashmap.h
+    include/tds/queue.h
     include/tds/set.h
     include/tds/vector.h
     libs/munit/munit.c

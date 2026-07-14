@@ -9,6 +9,7 @@ error detection.
 The library currently provides:
 
 - Vectors
+- Queues
 - Hash maps
 - Sets
 - Dense pools
@@ -45,6 +46,7 @@ By default, if neither `TDS_DECLARE` nor `TDS_IMPLEMENT` is defined, the header 
 | Data structure | Default generated type | Description |
 |---|---|---|
 | Vector | `vec_<value-type>` | A dynamic contiguous array. |
+| Queue | `queue_<value-type>` | A dynamically growing FIFO circular queue. |
 | Hash map | `hashmap_<key-type>_<value-type>` | An unordered key-value container using Robin Hood hashing. |
 | Set | `set_<value-type>` | An unordered container of unique values using Robin Hood hashing. |
 | Dense pool | `dense_pool_<value-type>` | A dense array with stable sparse IDs and O(1) add/remove by ID. |
@@ -68,6 +70,23 @@ Header: `#include <tds/vector.h>`
 | `clear` | Removes all elements but keeps the allocated buffer. |
 | `reclaim` | Shrinks the allocated buffer to exactly `count` elements, or frees it if empty. |
 | `fini` | Finalizes the vector and frees all storage. |
+
+### Queue
+
+Header: `#include <tds/queue.h>`
+
+| Function | Description |
+|---|---|
+| `push` | Adds one value to the back of the queue. |
+| `pop` | Removes and returns the oldest value. The queue must not be empty. |
+| `front` | Returns a pointer to the oldest value, or `NULL` when empty. |
+| `reserve` | Ensures capacity for at least `capacity` elements. |
+| `count` | Returns the current number of elements. |
+| `clear` | Removes all elements but keeps the allocated buffer. |
+| `reclaim` | Shrinks the buffer to exactly `count` elements, or frees it if empty. |
+| `fini` | Finalizes the queue and frees all storage. |
+
+`pop` transfers the shallow-copied value to the caller and therefore does not invoke `TDS_VALUE_FINI`.
 
 ### Hash map
 
@@ -154,6 +173,7 @@ Define these before including any TDS header if you want to override the default
 | `TDS_REALLOC` | Reallocation function compatible with `realloc`. | `realloc` |
 | `TDS_FREE` | Deallocation function compatible with `free`. | `free` |
 | `TDS_MEMSET` | Memory set function compatible with `memset`. | `memset` |
+| `TDS_MEMCPY` | Memory copy function compatible with `memcpy`. | `memcpy` |
 | `TDS_MEMMOVE` | Memory move function compatible with `memmove`. | `memmove` |
 | `TDS_ASSERT` | Assertion macro used for internal checks. | `assert` in debug builds, `((void)0)` with `NDEBUG` |
 | `TDS_INITIAL_CAPACITY` | Initial requested capacity for growing containers. | `4` |
@@ -236,6 +256,29 @@ int main(void) {
 
     vec_short_fini(&samples);
     byte_buffer_fini(&bytes);
+    return 0;
+}
+```
+
+### Circular queue
+
+```c
+#include <assert.h>
+#include <tds/queue.h>
+
+int main(void) {
+    queue_int jobs = { 0 };
+
+    queue_int_push(&jobs, 10);
+    queue_int_push(&jobs, 20);
+    assert(*queue_int_front(&jobs) == 10);
+    assert(queue_int_pop(&jobs) == 10);
+
+    queue_int_push(&jobs, 30);
+    assert(queue_int_pop(&jobs) == 20);
+    assert(queue_int_pop(&jobs) == 30);
+
+    queue_int_fini(&jobs);
     return 0;
 }
 ```

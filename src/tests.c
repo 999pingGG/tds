@@ -30,6 +30,24 @@
 #define TDS_VALUE_T uint64_t
 #include <tds/vector.h>
 
+#include <tds/queue.h>
+
+#define TDS_TYPE small_queue
+#define TDS_SIZE_T uint8_t
+#define TDS_VALUE_T uint16_t
+#include <tds/queue.h>
+
+static unsigned queue_values_finalized;
+
+static void finalize_queue_value(const int value) {
+    (void)value;
+    queue_values_finalized++;
+}
+
+#define TDS_TYPE cleanup_queue
+#define TDS_VALUE_FINI(value) finalize_queue_value(value)
+#include <tds/queue.h>
+
 #define TDS_SIZE_T uint8_t
 #define TDS_KEY_T uint8_t
 #define TDS_VALUE_T uint64_t
@@ -65,6 +83,9 @@ typedef struct test_data_structures_t {
     vec_uint16_t uint16_vec;
     vec_int int_vec;
     vector_u64 uint64_vec;
+    queue_int int_queue;
+    small_queue small_queue;
+    cleanup_queue cleanup_queue;
     hashmap_uint8_t_uint64_t uint64_hashmap;
     hashmap_u16_to_u8 u8_hashmap;
     hashmap_int_int int_hashmap;
@@ -90,6 +111,9 @@ static void tear_down(void* fixture) {
     vec_uint16_t_fini(&data_structures->uint16_vec);
     vec_int_fini(&data_structures->int_vec);
     vector_u64_fini(&data_structures->uint64_vec);
+    queue_int_fini(&data_structures->int_queue);
+    small_queue_fini(&data_structures->small_queue);
+    cleanup_queue_fini(&data_structures->cleanup_queue);
     hashmap_uint8_t_uint64_t_fini(&data_structures->uint64_hashmap);
     hashmap_u16_to_u8_fini(&data_structures->u8_hashmap);
     hashmap_int_int_fini(&data_structures->int_hashmap);
@@ -400,6 +424,101 @@ static MunitResult count(const MunitParameter* params, void* fixture) {
     return MUNIT_OK;
 }
 
+static MunitResult queue_fifo_and_wrap(const MunitParameter* params, void* fixture) {
+    (void)params;
+    test_data_structures_t* data_structures = fixture;
+    queue_int* queue = &data_structures->int_queue;
+
+    munit_assert_uint32(queue_int_count(queue), ==, 0);
+    munit_assert_null(queue_int_front(queue));
+
+    queue_int_reserve(queue, 4);
+    for (int i = 0; i < 4; i++) {
+        queue_int_push(queue, i);
+    }
+    munit_assert_int(queue_int_pop(queue), ==, 0);
+    munit_assert_int(queue_int_pop(queue), ==, 1);
+
+    queue_int_push(queue, 4);
+    queue_int_push(queue, 5);
+    munit_assert_uint32(queue->capacity, ==, 4);
+    munit_assert_uint32(queue->head, ==, 2);
+    for (int expected = 2; expected < 6; expected++) {
+        munit_assert_int(*queue_int_front(queue), ==, expected);
+        munit_assert_int(queue_int_pop(queue), ==, expected);
+    }
+
+    munit_assert_null(queue_int_front(queue));
+    munit_assert_uint32(queue_int_count(queue), ==, 0);
+    return MUNIT_OK;
+}
+
+static MunitResult queue_growth_and_storage(const MunitParameter* params, void* fixture) {
+    (void)params;
+    test_data_structures_t* data_structures = fixture;
+    small_queue* queue = &data_structures->small_queue;
+
+    for (uint16_t i = 0; i < 4; i++) {
+        small_queue_push(queue, i);
+    }
+    munit_assert_uint8(queue->capacity, ==, 4);
+    small_queue_push(queue, 4);
+    munit_assert_uint8(queue->capacity, ==, 8);
+    munit_assert_uint8(queue->head, ==, 0);
+
+    munit_assert_uint16(small_queue_pop(queue), ==, 0);
+    munit_assert_uint16(small_queue_pop(queue), ==, 1);
+    for (uint16_t i = 5; i < 10; i++) {
+        small_queue_push(queue, i);
+    }
+    munit_assert_uint8(queue->head, ==, 2);
+    small_queue_push(queue, 10);
+    munit_assert_uint8(queue->capacity, ==, 16);
+    munit_assert_uint8(queue->head, ==, 0);
+    for (uint16_t expected = 2; expected <= 10; expected++) {
+        munit_assert_uint16(small_queue_pop(queue), ==, expected);
+    }
+
+    small_queue_reserve(queue, 12);
+    small_queue_push(queue, 20);
+    small_queue_push(queue, 21);
+    small_queue_reclaim(queue);
+    munit_assert_uint8(queue->capacity, ==, 2);
+    munit_assert_uint8(queue->head, ==, 0);
+    munit_assert_uint16(small_queue_pop(queue), ==, 20);
+    munit_assert_uint16(small_queue_pop(queue), ==, 21);
+    small_queue_reclaim(queue);
+    munit_assert_null(queue->array);
+    munit_assert_uint8(queue->capacity, ==, 0);
+
+    small_queue_push(queue, 30);
+    small_queue_clear(queue);
+    munit_assert_uint8(queue->count, ==, 0);
+    munit_assert_not_null(queue->array);
+    return MUNIT_OK;
+}
+
+static MunitResult queue_cleanup(const MunitParameter* params, void* fixture) {
+    (void)params;
+    test_data_structures_t* data_structures = fixture;
+    cleanup_queue* queue = &data_structures->cleanup_queue;
+
+    queue_values_finalized = 0;
+    cleanup_queue_push(queue, 1);
+    cleanup_queue_push(queue, 2);
+    cleanup_queue_push(queue, 3);
+    munit_assert_int(cleanup_queue_pop(queue), ==, 1);
+    munit_assert_uint(queue_values_finalized, ==, 0);
+    cleanup_queue_clear(queue);
+    munit_assert_uint(queue_values_finalized, ==, 2);
+
+    cleanup_queue_push(queue, 4);
+    cleanup_queue_push(queue, 5);
+    cleanup_queue_fini(queue);
+    munit_assert_uint(queue_values_finalized, ==, 4);
+    return MUNIT_OK;
+}
+
 static MunitResult bitset(const MunitParameter* params, void* fixture) {
     (void)params;
     (void)fixture;
@@ -492,6 +611,13 @@ int main(const int argc, char* const* argv) {
         { 0 },
     };
 
+    MunitTest queues[] = {
+        TDS_TEST(queue_fifo_and_wrap),
+        TDS_TEST(queue_growth_and_storage),
+        TDS_TEST(queue_cleanup),
+        { 0 },
+    };
+
     MunitSuite suites[] = {
         {
             .prefix = "/containers",
@@ -504,6 +630,10 @@ int main(const int argc, char* const* argv) {
         {
             .prefix = "/bitset",
             .tests = bitsets,
+        },
+        {
+            .prefix = "/queue",
+            .tests = queues,
         },
         { 0 },
     };
